@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculators · Group Expense Tracker</title>
+<style>
+  :root{
+    --navy:#2e3440;
+    --teal:#88c0d0;
+    --sand:#e5e9f0;
+    --paper:#eceff4;
+    --ink:#2e3440;
+    --muted:#4c566a;
+    --coral:#bf616a;
+    --line:#d8dee9;
+    --good:#a3be8c;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--sand);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:32px 16px 64px;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .topnav{margin-bottom:18px;}
+  .backlink{color:var(--muted);font-size:13px;text-decoration:none;font-weight:600;}
+  .backlink:hover{color:var(--navy);text-decoration:underline;}
+  header{border-bottom:2px solid var(--navy);padding-bottom:18px;margin-bottom:20px;}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:700;margin-bottom:6px;}
+  h1{font-family:Georgia,'Iowan Old Style',serif;font-size:34px;margin:0 0 6px;color:var(--navy);letter-spacing:.01em;}
+  .sub{color:var(--muted);font-size:14.5px;line-height:1.5;max-width:680px;}
+  .toolbar{display:grid;gap:10px;margin-bottom:24px;align-items:start;}
+  .toolbar-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .toolbtn{border:1px solid var(--navy);background:var(--paper);color:var(--navy);border-radius:4px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;}
+  .toolbtn:hover{background:var(--navy);color:var(--sand);}
+  .toolbtn.secondary{border-color:var(--line);color:var(--muted);}
+  .toolbtn.secondary:hover{background:var(--line);color:var(--ink);}
+  .toolbtn.danger{border-color:var(--coral);color:var(--coral);}
+  .toolbtn.danger:hover{background:var(--coral);color:#fff;}
+  .toolstatus{flex-basis:100%;color:var(--muted);font-size:12px;line-height:1.4;min-height:16px;}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px 22px;margin-bottom:22px;box-shadow:0 1px 0 rgba(31,48,64,.04);}
+  .card h2{font-family:Georgia,serif;font-size:16px;color:var(--navy);margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .card h2 .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--navy);color:var(--sand);font-size:11px;font-family:Georgia,serif;}
+  .card p.hint{color:var(--muted);font-size:12.5px;margin:0 0 14px;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 8px 8px;border-bottom:1px solid var(--line);}
+  td{padding:6px 8px;border-bottom:1px solid #ece3cd;vertical-align:middle;}
+  input[type=text], input[type=number], input[type=date], select{width:100%;border:1px solid var(--line);background:#fff;border-radius:3px;padding:6px 7px;font-size:13.5px;color:var(--ink);font-family:inherit;}
+  input[type=number]{min-width:58px;}
+  input.invalid{border-color:var(--coral) !important;background:#fbe9eb;}
+  .rowbtns{display:flex;gap:6px;}
+  .iconbtn{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+  .iconbtn:hover{background:var(--sand);color:var(--navy);}
+  .addbtn{margin-top:10px;border:1px dashed var(--teal);background:transparent;color:var(--teal);border-radius:3px;padding:7px 12px;font-size:12.5px;cursor:pointer;font-weight:600;}
+  .addbtn:hover{background:rgba(79,138,143,.08);}
+  .segmented{display:inline-flex;border:1px solid var(--navy);border-radius:4px;overflow:hidden;}
+  .segmented button{border:none;background:var(--paper);color:var(--navy);padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600;}
+  .segmented button.active{background:var(--navy);color:var(--sand);}
+  .totals-table td, .totals-table th{padding:9px 10px;}
+  .checkline{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;}
+  .checkline .ok{color:var(--good);font-weight:700;}
+  .checkline .warn{color:var(--coral);font-weight:700;}
+  details{margin-top:16px;}
+  summary{cursor:pointer;font-size:12.5px;color:var(--teal);font-weight:600;}
+  .daybreak-table{margin-top:10px;font-size:12px;}
+  .daybreak-table th, .daybreak-table td{padding:5px 8px;}
+  .grouptag{display:inline-block;background:var(--sand);border:1px solid var(--line);border-radius:10px;padding:1px 8px;font-size:11px;color:var(--muted);margin-left:6px;}
+  .group-field{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;}
+  .group-field input{min-width:0;}
+  .group-field .grouptag{margin-left:0;white-space:nowrap;}
+  .sharecell{text-align:right;font-weight:700;color:var(--coral);}
+  .group-namecell{display:grid;grid-template-columns:28px 1fr;align-items:center;column-gap:8px;}
+  .group-namebody{min-width:0;}
+  .group-expander{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:3px;width:24px;height:24px;cursor:pointer;font-weight:700;line-height:1;}
+  .group-expander:hover{background:var(--sand);}
+  .subgroup-row td{background:rgba(255,255,255,.28);font-size:13px;}
+  .totals-table td.subgroup-label{color:var(--muted);padding-left:58px;}
+  .subgroup-label b{color:var(--ink);font-weight:600;}
+  footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:30px;}
+  .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  @media (max-width:640px){
+    body{padding:20px 10px 48px;}
+    h1{font-size:26px;}
+    .toolbar{flex-wrap:wrap;}
+    .segmented{flex-wrap:wrap;}
+    .scroller table{min-width:560px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="topnav" aria-label="Calculator navigation">
+    <a class="backlink" href="index.html">All calculators</a>
+  </nav>
+  <header>
+    <div class="eyebrow">Any group · any expenses · one settle-up</div>
+    <h1>Group Expense Tracker</h1>
+    <p class="sub">Every expense is priced by day, split among the groups around on that day, and — when one group has sub-groups leaving or joining at different times — split again inside that group by headcount. Costs one sub-group alone incurs land on that sub-group, not the whole group or everyone else.</p>
+  </header>
+
+  <div class="toolbar">
+    <div class="toolbar-row">
+      <button class="toolbtn" onclick="copyShareLink()">Copy shareable link</button>
+    </div>
+    <div class="toolbar-row">
+      <button class="toolbtn" onclick="openCsvImport()">Import CSV data</button>
+      <button class="toolbtn" onclick="exportCsvData()">Export CSV data</button>
+      <button class="toolbtn" onclick="loadSampleData()">Load sample data</button>
+    </div>
+    <div class="toolbar-row">
+      <button class="toolbtn danger" onclick="clearForm()">Clear form</button>
+    </div>
+    <input id="csvImportInput" type="file" accept=".csv,text/csv" multiple style="display:none">
+    <div id="csvStatus" class="toolstatus" aria-live="polite"></div>
+  </div>
+
+  <div class="card" id="groupsCard">
+    <h2><span class="n">1</span>Groups</h2>
+    <p class="hint">Arrival / departure = the days this row is around. <b>To split one group into sub-groups</b> (e.g. some leaving earlier than others), add another row and give it the <b>exact same group name</b> — start typing to see existing names suggested. Rows sharing a name get priced separately day-by-day but are automatically recombined for totals and the true-up below, and are tagged "sub-group" so they're easy to spot.</p>
+    <div class="scroller">
+    <table>
+      <thead>
+        <tr><th style="width:24%">Group</th><th style="width:12%">People</th><th style="width:18%">Arrives</th><th style="width:18%">Departs</th><th style="width:12%;text-align:right">Days</th><th style="width:6%"></th></tr>
+      </thead>
+      <tbody id="groupRows"></tbody>
+    </table>
+    </div>
+    <datalist id="groupNameList"></datalist>
+    <button class="addbtn" onclick="addGroup()">+ Add group</button>
+    <p id="groupWarn" style="color:var(--coral);font-size:12px;margin:10px 0 0;display:none;line-height:1.6;"></p>
+    <p id="unnamedWarn" style="color:var(--coral);font-size:12px;margin:10px 0 0;display:none;"></p>
+  </div>
+
+  <div class="card" id="expensesCard">
+    <h2><span class="n">2</span>Expenses</h2>
+    <p class="hint">Total cost ÷ days it applies = the daily rate charged to whoever's around that day.</p>
+    <div class="scroller">
+    <table>
+      <thead>
+        <tr><th style="width:22%">Description</th><th style="width:12%">Total cost</th><th style="width:14%">Start date</th><th style="width:14%">End date</th><th style="width:8%;text-align:right">Days</th><th style="width:10%;text-align:right">$ / day</th><th style="width:15%">Already paid by</th><th style="width:5%"></th></tr>
+      </thead>
+      <tbody id="expenseRows"></tbody>
+    </table>
+    </div>
+    <button class="addbtn" onclick="addExpense()">+ Add expense</button>
+    <p id="expenseWarn" style="color:var(--coral);font-size:12px;margin:10px 0 0;display:none;line-height:1.6;"></p>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>Split method</h2>
+    <div class="segmented" id="methodToggle">
+      <button data-m="group" class="active">Equally per group, per day</button>
+      <button data-m="person">By headcount, per day</button>
+    </div>
+    <p class="hint" style="margin-top:10px;">"Per group" divides each day's cost across whole groups (a pair and a group of five pay the same daily share) — sub-groups within one group then split that group's share by headcount. "By headcount" skips the group step and just divides every day's cost across everyone present.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">4</span>Fair share by group</h2>
+    <p class="hint">Groups with sub-groups can be expanded to show how their total is split across date ranges and people counts.</p>
+    <table class="totals-table">
+      <thead><tr><th>Group</th><th style="text-align:right">Days present</th><th style="text-align:right">Fair share</th></tr></thead>
+      <tbody id="rowResults"></tbody>
+    </table>
+    <details>
+      <summary id="breakdownToggle">Show day-by-day breakdown</summary>
+      <div class="scroller">
+      <table class="daybreak-table" id="daybreakTable"></table>
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">5</span>Group totals vs. already paid</h2>
+    <p class="hint">Rows sharing a group name are combined here, then checked against what that group already fronted.</p>
+    <table class="totals-table">
+      <thead><tr><th>Group</th><th style="text-align:right">Fair share</th><th style="text-align:right">Already paid</th><th style="text-align:right">Net</th></tr></thead>
+      <tbody id="groupResults"></tbody>
+    </table>
+    <div class="checkline">
+      <span id="checkLeft">Total expense cost: —</span>
+      <span id="checkRight">Allocated: —</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">6</span>True-up: who pays whom</h2>
+    <p class="hint">A minimal set of transfers that settles every balance (greedy — usually optimal, not guaranteed the theoretical minimum).</p>
+    <ul id="settleList" style="margin:0;padding-left:18px;line-height:1.9;font-size:14px;"></ul>
+    <p id="settleNone" style="color:var(--good);font-weight:600;display:none;">Everyone's already square — no transfers needed.</p>
+    <p id="unmatchedWarn" style="color:var(--coral);font-size:12.5px;margin-top:10px;display:none;"></p>
+  </div>
+
+  <footer>Edit any field and the tracker recalculates automatically.</footer>
+</div>
+
+<script>
+let expenseData = [
+  {name:"", cost:0, start:"2026-01-01", end:"2026-01-02", paidBy:""}
+];
+let groupData = [
+  {name:"", people:1, arrive:"2026-01-01", depart:"2026-01-02"}
+];
+
+const sampleExpenses = [
+  {name:"Cabin rental", cost:1200.00, start:"2026-08-01", end:"2026-08-08", paidBy:"Smith family"},
+  {name:"Groceries run", cost:340.00, start:"2026-08-01", end:"2026-08-08", paidBy:"Jones family"},
+  {name:"Rental car", cost:410.00, start:"2026-08-01", end:"2026-08-10", paidBy:"Lee family"}
+];
+const sampleGroups = [
+  {name:"Smith family", people:4, arrive:"2026-08-01", depart:"2026-08-06"},
+  {name:"Smith family", people:2, arrive:"2026-08-01", depart:"2026-08-08"},
+  {name:"Jones family", people:3, arrive:"2026-08-02", depart:"2026-08-08"},
+  {name:"Lee family",   people:2, arrive:"2026-08-01", depart:"2026-08-10"}
+];
+
+let splitMethod = 'group';
+const expandedGroups = new Set();
+
+function parseDate(s){ if(!s) return null; const d = new Date(s+"T00:00:00"); return isNaN(d) ? null : d; }
+function addDays(s, n){ const d = parseDate(s); if(!d) return s; d.setDate(d.getDate()+n); return ymd(d); }
+function daysBetween(start,end){
+  const s = parseDate(start), e = parseDate(end);
+  if(!s || !e) return 0;
+  return Math.max(1, Math.round((e-s)/86400000)+1);
+}
+function expDatesInvalid(v){ const s = parseDate(v.start), e = parseDate(v.end); return !s || !e || e < s; }   // end may equal start (single-day expense)
+function grpDatesInvalid(f){ const a = parseDate(f.arrive), d = parseDate(f.depart); return !a || !d || d < a; } // depart may equal arrive (single-day stay)
+function peopleOf(i){ const p = groupData[i].people; return (Number.isInteger(p) && p > 0) ? p : 1; }
+function showIssues(id, issues){
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(issues.length){ el.style.display='block'; el.innerHTML = issues.map(m=>'⚠ '+esc(m)).join('<br>'); }
+  else { el.style.display='none'; el.innerHTML=''; }
+}
+function fmt(n){ return "$"+n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function ymd(dt){ return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,'0')+"-"+String(dt.getDate()).padStart(2,'0'); }
+const STORE_KEY='groupExpenseTracker.v1';
+function currentState(){ return {expenseData, groupData, splitMethod}; }
+function compactState(){
+  return {
+    v:1,
+    m:splitMethod,
+    e:expenseData.map(v=>[v.name, v.cost, v.start, v.end, v.paidBy]),
+    g:groupData.map(f=>[f.name, f.people, f.arrive, f.depart])
+  };
+}
+function expandState(d){
+  if(d && d.v === 1 && Array.isArray(d.e) && Array.isArray(d.g)){
+    return {
+      splitMethod:d.m,
+      expenseData:d.e.map(v=>({name:v[0], cost:v[1], start:v[2], end:v[3], paidBy:v[4]})),
+      groupData:d.g.map(f=>({name:f[0], people:f[1], arrive:f[2], depart:f[3]}))
+    };
+  }
+  return d;
+}
+function validState(d){
+  const expanded = expandState(d);
+  return expanded && Array.isArray(expanded.expenseData) && Array.isArray(expanded.groupData) && expanded.expenseData.length && expanded.groupData.length;
+}
+function applyState(d){
+  d = expandState(d);
+  if(!validState(d)) return false;
+  expenseData = d.expenseData.map(v=>({
+    name:String(v.name || ''),
+    cost:Number.isFinite(Number(v.cost)) ? Number(v.cost) : 0,
+    start:String(v.start || ''),
+    end:String(v.end || ''),
+    paidBy:String(v.paidBy || '')
+  }));
+  groupData = d.groupData.map(f=>({
+    name:String(f.name || ''),
+    people:Number.isInteger(Number(f.people)) ? Number(f.people) : 1,
+    arrive:String(f.arrive || ''),
+    depart:String(f.depart || '')
+  }));
+  splitMethod = d.splitMethod === 'person' ? 'person' : 'group';
+  return true;
+}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(currentState())); }catch(e){} }
+function loadStored(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return false;
+    const d = JSON.parse(raw);
+    return applyState(d);
+  }catch(e){}
+  return false;
+}
+function uniqueGroupNames(){ return [...new Set(groupData.map(f=>f.name).filter(n=>n))]; }
+function groupDomId(name){ return 'g-' + encodeURIComponent(name).replace(/[^a-zA-Z0-9]/g, '-'); }
+
+function bytesToBase64Url(bytes){
+  let binary = '';
+  bytes.forEach(b=>{ binary += String.fromCharCode(b); });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+function base64UrlToBytes(s){
+  const padded = s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4);
+  return Uint8Array.from(atob(padded), c=>c.charCodeAt(0));
+}
+function supportsShareCompression(){
+  return typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
+}
+async function compressBytes(bytes){
+  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function decompressBytes(bytes){
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function encodeShareState(){
+  const bytes = new TextEncoder().encode(JSON.stringify(compactState()));
+  const uncompressed = 'u.' + bytesToBase64Url(bytes);
+  if(supportsShareCompression()){
+    try{
+      const compressed = 'z.' + bytesToBase64Url(await compressBytes(bytes));
+      return compressed.length < uncompressed.length ? compressed : uncompressed;
+    }catch(e){}
+  }
+  return uncompressed;
+}
+async function decodeShareState(s){
+  if(s.startsWith('z.')){
+    if(!supportsShareCompression()) throw new Error('Compressed links require DecompressionStream support.');
+    const bytes = await decompressBytes(base64UrlToBytes(s.slice(2)));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+  const raw = (s.startsWith('j.') || s.startsWith('u.')) ? s.slice(2) : s; // prefixless links from the first share-link version
+  return JSON.parse(new TextDecoder().decode(base64UrlToBytes(raw)));
+}
+function shareDataFromHash(){
+  const params = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+  return params.get('data');
+}
+function clearShareHash(){
+  if(!shareDataFromHash()) return;
+  const url = new URL(window.location.href);
+  url.hash = '';
+  window.history.replaceState(null, '', url);
+}
+function markUserChanged(){ clearShareHash(); }
+async function loadSharedDataFromHash(){
+  const encoded = shareDataFromHash();
+  if(!encoded) return false;
+  try{
+    if(applyState(await decodeShareState(encoded))){
+      setCsvStatus('Loaded shared calculator data from the link.');
+      return true;
+    }
+  }catch(e){}
+  setCsvStatus('Could not load shared calculator data from this link.', true);
+  return false;
+}
+async function copyText(text){
+  if(navigator.clipboard && window.isSecureContext){
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.setAttribute('readonly', '');
+  el.style.position = 'fixed';
+  el.style.left = '-9999px';
+  document.body.appendChild(el);
+  el.select();
+  document.execCommand('copy');
+  el.remove();
+}
+async function copyShareLink(){
+  const url = new URL(window.location.href);
+  const encoded = await encodeShareState();
+  url.hash = 'data=' + encoded;
+  const shareUrl = url.toString();
+  const isLong = shareUrl.length > 4000;
+  try{
+    await copyText(shareUrl);
+    window.history.replaceState(null, '', url);
+    setCsvStatus(isLong
+      ? 'Copied share link, but it is long. If it does not paste cleanly, use CSV export instead.'
+      : 'Copied share link. The calculator values are stored in the link; anyone with it can read and open them.'
+    );
+  }catch(e){
+    setCsvStatus('Could not copy automatically. Use the updated URL in the address bar.', true);
+    window.location.hash = url.hash;
+  }
+}
+
+function setCsvStatus(msg, isError=false){
+  const el = document.getElementById('csvStatus');
+  if(!el) return;
+  el.textContent = msg || '';
+  el.style.color = isError ? 'var(--coral)' : 'var(--muted)';
+}
+
+function csvCell(value){
+  const s = String(value == null ? '' : value);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function rowsToCsv(rows){
+  return rows.map(row=>row.map(csvCell).join(',')).join('\r\n') + '\r\n';
+}
+
+function downloadCsv(filename, rows){
+  const blob = new Blob([rowsToCsv(rows)], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+}
+
+function exportCsvData(){
+  const stamp = ymd(new Date());
+  downloadCsv(`group-expense-tracker-expenses-${stamp}.csv`, [
+    ['Description','Total cost','Start date','End date','Already paid by'],
+    ...expenseData.map(v=>[v.name, Number.isFinite(v.cost) ? v.cost : '', v.start, v.end, v.paidBy])
+  ]);
+  downloadCsv(`group-expense-tracker-groups-${stamp}.csv`, [
+    ['Group','People','Arrives','Departs'],
+    ...groupData.map(f=>[f.name, Number.isFinite(f.people) ? f.people : '', f.arrive, f.depart])
+  ]);
+  downloadCsv(`group-expense-tracker-settings-${stamp}.csv`, [
+    ['Setting','Value'],
+    ['split method', splitMethod]
+  ]);
+  setCsvStatus('Exported expenses, groups, and settings CSV files.');
+}
+
+function openCsvImport(){
+  const input = document.getElementById('csvImportInput');
+  if(input) input.click();
+}
+
+function parseCsv(text){
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  for(let i=0; i<text.length; i++){
+    const ch = text[i];
+    const next = text[i+1];
+    if(quoted){
+      if(ch === '"' && next === '"'){ cell += '"'; i++; }
+      else if(ch === '"'){ quoted = false; }
+      else { cell += ch; }
+    } else if(ch === '"'){
+      quoted = true;
+    } else if(ch === ','){
+      row.push(cell);
+      cell = '';
+    } else if(ch === '\n' || ch === '\r'){
+      if(ch === '\r' && next === '\n') i++;
+      row.push(cell);
+      if(row.some(v=>v.trim() !== '')) rows.push(row);
+      row = [];
+      cell = '';
+    } else {
+      cell += ch;
+    }
+  }
+  row.push(cell);
+  if(row.some(v=>v.trim() !== '')) rows.push(row);
+  return rows;
+}
+
+function headerKey(s){ return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function csvHeaderMap(headers){
+  const map = {};
+  headers.forEach((h,i)=>{ map[headerKey(h)] = i; });
+  return map;
+}
+function csvValue(row, map, keys){
+  for(const key of keys){
+    if(map[key] != null) return row[map[key]] || '';
+  }
+  return '';
+}
+
+function importExpenseRows(rows){
+  const map = csvHeaderMap(rows[0]);
+  if(map.description == null && map.name == null) throw new Error('Expenses CSV is missing a Description column.');
+  if(map.totalcost == null && map.cost == null) throw new Error('Expenses CSV is missing a Total cost column.');
+  const imported = rows.slice(1).map(row=>{
+    const cost = parseFloat(csvValue(row, map, ['totalcost','cost']));
+    return {
+      name: csvValue(row, map, ['description','name']).trim(),
+      cost: Number.isFinite(cost) ? cost : 0,
+      start: csvValue(row, map, ['startdate','start']).trim(),
+      end: csvValue(row, map, ['enddate','end']).trim(),
+      paidBy: csvValue(row, map, ['alreadypaidby','paidby']).trim()
+    };
+  }).filter(v=>v.name || v.cost || v.start || v.end || v.paidBy);
+  if(!imported.length) throw new Error('Expenses CSV did not contain any expense rows.');
+  expenseData = imported;
+  return 'expenses';
+}
+
+function importGroupRows(rows){
+  const map = csvHeaderMap(rows[0]);
+  if(map.group == null && map.name == null) throw new Error('Groups CSV is missing a Group column.');
+  if(map.people == null) throw new Error('Groups CSV is missing a People column.');
+  const imported = rows.slice(1).map(row=>{
+    const people = parseInt(csvValue(row, map, ['people']), 10);
+    return {
+      name: csvValue(row, map, ['group','name']).trim(),
+      people: Number.isInteger(people) ? people : 1,
+      arrive: csvValue(row, map, ['arrives','arrive','arrivaldate']).trim(),
+      depart: csvValue(row, map, ['departs','depart','departuredate']).trim()
+    };
+  }).filter(f=>f.name || f.people || f.arrive || f.depart);
+  if(!imported.length) throw new Error('Groups CSV did not contain any group rows.');
+  groupData = imported;
+  return 'groups';
+}
+
+function importSettingsRows(rows){
+  const map = csvHeaderMap(rows[0]);
+  if(map.setting == null || map.value == null) throw new Error('Settings CSV is missing Setting and Value columns.');
+  rows.slice(1).forEach(row=>{
+    const setting = csvValue(row, map, ['setting']).trim().toLowerCase();
+    const value = csvValue(row, map, ['value']).trim();
+    if(setting === 'split method' && (value === 'group' || value === 'person')) splitMethod = value;
+  });
+  return 'settings';
+}
+
+function importCsvRows(rows){
+  if(rows.length < 2) throw new Error('CSV file needs a header row and at least one data row.');
+  const map = csvHeaderMap(rows[0]);
+  if((map.description != null || map.totalcost != null || map.alreadypaidby != null) && (map.startdate != null || map.enddate != null)){
+    return importExpenseRows(rows);
+  }
+  if((map.group != null || map.people != null) && (map.arrives != null || map.departs != null || map.arrive != null || map.depart != null)){
+    return importGroupRows(rows);
+  }
+  if(map.setting != null && map.value != null){
+    return importSettingsRows(rows);
+  }
+  throw new Error('CSV headers were not recognized as expenses, groups, or settings.');
+}
+
+async function handleCsvImport(files){
+  const beforeImport = JSON.parse(JSON.stringify(currentState()));
+  const imported = [];
+  const errors = [];
+  for(const file of files){
+    try{
+      imported.push(importCsvRows(parseCsv(await file.text())));
+    }catch(e){
+      errors.push(`${file.name}: ${e.message}`);
+    }
+  }
+  if(errors.length){
+    applyState(beforeImport);
+    renderAll();
+    setMethodButtons();
+    setCsvStatus(`${errors.join(' ')} No CSV data was imported.`, true);
+  } else if(imported.length){
+    markUserChanged();
+    renderAll();
+    setMethodButtons();
+    setCsvStatus(`Imported ${[...new Set(imported)].join(', ')} from CSV.`);
+  } else {
+    setCsvStatus('No CSV files selected.');
+  }
+}
+
+function renderGroupNameList(){
+  const dl = document.getElementById('groupNameList');
+  dl.innerHTML = uniqueGroupNames().map(n=>`<option value="${esc(n)}">`).join('');
+}
+
+function renderExpenses(){
+  const tbody = document.getElementById('expenseRows');
+  tbody.innerHTML='';
+  const names = uniqueGroupNames();
+  expenseData.forEach((v,i)=>{
+    const options = ['<option value="">—</option>'].concat(names.map(n=>`<option value="${esc(n)}" ${n===v.paidBy?'selected':''}>${esc(n)}</option>`)).join('');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" placeholder="e.g. Cabin rental" value="${esc(v.name)}" oninput="onExpenseName(${i},this)"></td>
+      <td><input type="number" id="e-cost-${i}" step="0.01" value="${v.cost}" oninput="onExpenseCost(${i},this)"></td>
+      <td><input type="date" id="e-start-${i}" value="${v.start}" oninput="onExpenseStart(${i},this)"></td>
+      <td><input type="date" id="e-end-${i}" value="${v.end}" oninput="onExpenseEnd(${i},this)"></td>
+      <td id="e-days-${i}" style="text-align:right;color:var(--muted);"></td>
+      <td id="e-rate-${i}" style="text-align:right;color:var(--muted);"></td>
+      <td><select onchange="onExpensePaidBy(${i},this)">${options}</select></td>
+      <td><div class="rowbtns"><button class="iconbtn" aria-label="Remove expense" title="Remove expense" onclick="removeExpense(${i})">✕</button></div></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderGroups(){
+  const tbody = document.getElementById('groupRows');
+  tbody.innerHTML='';
+  groupData.forEach((f,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><div class="group-field"><input type="text" list="groupNameList" placeholder="e.g. Smith family" value="${esc(f.name)}" oninput="onGroupName(${i},this)"><span id="grouptag-${i}"></span></div></td>
+      <td><input type="number" id="g-people-${i}" value="${Number.isFinite(f.people)?f.people:''}" oninput="onGroupPeople(${i},this)"></td>
+      <td><input type="date" id="g-arrive-${i}" value="${f.arrive}" oninput="onGroupArrive(${i},this)"></td>
+      <td><input type="date" id="g-depart-${i}" value="${f.depart}" oninput="onGroupDepart(${i},this)"></td>
+      <td id="g-days-${i}" style="text-align:right;color:var(--muted);"></td>
+      <td><div class="rowbtns"><button class="iconbtn" aria-label="Remove group" title="Remove group" onclick="removeGroup(${i})">✕</button></div></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  updateGroupTags();
+}
+
+function updateGroupTags(){
+  const nameCounts = {};
+  groupData.forEach(f=>{ if(f.name) nameCounts[f.name] = (nameCounts[f.name]||0)+1; });
+  groupData.forEach((f,i)=>{
+    const el = document.getElementById('grouptag-'+i);
+    if(!el) return;
+    el.innerHTML = (f.name && nameCounts[f.name]>1) ? '<span class="grouptag">sub-group</span>' : '';
+  });
+}
+
+function onExpenseName(i, el){ expenseData[i].name = el.value; markUserChanged(); recalc(); }
+function onExpensePaidBy(i, el){ expenseData[i].paidBy = el.value; markUserChanged(); recalc(); }
+function onGroupName(i, el){ groupData[i].name = el.value; markUserChanged(); renderExpenses();renderGroupNameList();recalc(); }
+function onExpenseCost(i, el){ const n = parseFloat(el.value); expenseData[i].cost = Number.isFinite(n) ? n : 0; markUserChanged(); recalc(); }
+function onExpenseStart(i, el){
+  expenseData[i].start = el.value;
+  // once a start is picked, push the end to the day after (so its picker opens on a future date) unless a later end is already set
+  if(el.value && (!expenseData[i].end || expenseData[i].end <= el.value)){
+    expenseData[i].end = addDays(el.value, 1);
+    const endEl = document.getElementById('e-end-'+i);
+    if(endEl) endEl.value = expenseData[i].end;
+  }
+  markUserChanged(); recalc();
+}
+function onExpenseEnd(i, el){ expenseData[i].end = el.value; markUserChanged(); recalc(); }
+function onGroupPeople(i, el){ const n = parseInt(el.value, 10); groupData[i].people = Number.isNaN(n) ? NaN : n; markUserChanged(); recalc(); }
+function onGroupArrive(i, el){
+  groupData[i].arrive = el.value;
+  if(el.value && (!groupData[i].depart || groupData[i].depart <= el.value)){
+    groupData[i].depart = addDays(el.value, 1);
+    const depEl = document.getElementById('g-depart-'+i);
+    if(depEl) depEl.value = groupData[i].depart;
+  }
+  markUserChanged(); recalc();
+}
+function onGroupDepart(i, el){ groupData[i].depart = el.value; markUserChanged(); recalc(); }
+
+function addExpense(){
+  markUserChanged();
+  expenseData.push({name:"", cost:0, start:"2026-01-01", end:"2026-01-02", paidBy:""});
+  renderExpenses(); recalc();
+}
+function removeExpense(i){ markUserChanged(); expenseData.splice(i,1); renderExpenses(); recalc(); }
+function addGroup(){
+  markUserChanged();
+  groupData.push({name:"", people:1, arrive:"2026-01-01", depart:"2026-01-02"});
+  renderGroups(); renderExpenses(); renderGroupNameList(); recalc();
+}
+function removeGroup(i){ markUserChanged(); groupData.splice(i,1); renderGroups(); renderExpenses(); renderGroupNameList(); recalc(); }
+
+function loadSampleData(){
+  markUserChanged();
+  expenseData = JSON.parse(JSON.stringify(sampleExpenses));
+  groupData = JSON.parse(JSON.stringify(sampleGroups));
+  splitMethod = 'group';
+  expandedGroups.clear();
+  setMethodButtons();
+  renderAll();
+}
+function clearForm(){
+  markUserChanged();
+  expenseData = [{name:"", cost:0, start:"2026-01-01", end:"2026-01-02", paidBy:""}];
+  groupData = [{name:"", people:1, arrive:"2026-01-01", depart:"2026-01-02"}];
+  splitMethod = 'group';
+  expandedGroups.clear();
+  setCsvStatus('');
+  setMethodButtons();
+  renderAll();
+}
+function renderAll(){
+  renderGroupNameList();
+  renderExpenses();
+  renderGroups();
+  recalc();
+}
+
+function setMethodButtons(){
+  [...document.getElementById('methodToggle').children].forEach(b=>b.classList.toggle('active', b.dataset.m===splitMethod));
+}
+
+document.getElementById('methodToggle').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  splitMethod = btn.dataset.m;
+  markUserChanged();
+  setMethodButtons();
+  recalc();
+});
+
+document.getElementById('csvImportInput').addEventListener('change', (e)=>{
+  const files = [...e.target.files];
+  e.target.value = '';
+  handleCsvImport(files);
+});
+
+document.getElementById('rowResults').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.group-expander');
+  if(!btn) return;
+  const name = btn.dataset.group;
+  if(expandedGroups.has(name)) expandedGroups.delete(name);
+  else expandedGroups.add(name);
+  recalc();
+});
+
+function recalc(){
+  // refresh the derived, read-only display cells (days / daily rate / sub-group tags) every time
+  updateGroupTags();
+  expenseData.forEach((v,i)=>{
+    const bad = expDatesInvalid(v);
+    const days = daysBetween(v.start,v.end);
+    const dEl = document.getElementById('e-days-'+i);
+    const rEl = document.getElementById('e-rate-'+i);
+    if(dEl) dEl.textContent = bad ? '—' : days;
+    if(rEl) rEl.textContent = (bad || !days) ? '—' : fmt(v.cost/days);
+  });
+  groupData.forEach((f,i)=>{
+    const dEl = document.getElementById('g-days-'+i);
+    if(dEl) dEl.textContent = grpDatesInvalid(f) ? '—' : daysBetween(f.arrive,f.depart);
+  });
+
+  if(expenseData.length===0 || groupData.length===0){ return; }
+
+  // --- validation pass: flag invalid inputs and collect messages ---
+  const expenseIssues = [];
+  expenseData.forEach((v,i)=>{
+    const s = parseDate(v.start), e = parseDate(v.end);
+    const label = (v.name && v.name.trim()) ? `"${v.name.trim()}"` : `Row ${i+1}`;
+    let startBad=false, endBad=false, costBad=false;
+    if(!s){ startBad=true; expenseIssues.push(`${label}: start date is required.`); }
+    if(!e){ endBad=true; expenseIssues.push(`${label}: end date is required.`); }
+    if(s && e && e < s){ endBad=true; expenseIssues.push(`${label}: end date can't be before the start date.`); }
+    if(v.cost < 0){ costBad=true; expenseIssues.push(`${label}: cost can't be negative.`); }
+    const se=document.getElementById('e-start-'+i); if(se) se.classList.toggle('invalid', startBad);
+    const ee=document.getElementById('e-end-'+i);   if(ee) ee.classList.toggle('invalid', endBad);
+    const ce=document.getElementById('e-cost-'+i);  if(ce) ce.classList.toggle('invalid', costBad);
+  });
+  const groupIssues = [];
+  groupData.forEach((f,i)=>{
+    const a = parseDate(f.arrive), d = parseDate(f.depart);
+    const label = (f.name && f.name.trim()) ? `"${f.name.trim()}"` : `Group row ${i+1}`;
+    let arrBad=false, depBad=false, pplBad=false;
+    if(!a){ arrBad=true; groupIssues.push(`${label}: arrival date is required.`); }
+    if(!d){ depBad=true; groupIssues.push(`${label}: departure date is required.`); }
+    if(a && d && d < a){ depBad=true; groupIssues.push(`${label}: departure can't be before arrival.`); }
+    if(!(Number.isInteger(f.people) && f.people >= 1)){ pplBad=true; groupIssues.push(`${label}: people must be a whole number of at least 1.`); }
+    const ae=document.getElementById('g-arrive-'+i); if(ae) ae.classList.toggle('invalid', arrBad);
+    const de=document.getElementById('g-depart-'+i); if(de) de.classList.toggle('invalid', depBad);
+    const pe=document.getElementById('g-people-'+i); if(pe) pe.classList.toggle('invalid', pplBad);
+  });
+  showIssues('expenseWarn', expenseIssues);
+  showIssues('groupWarn', groupIssues);
+
+  const rowTotals = groupData.map(()=>0);
+  const rowDaysPresent = groupData.map(()=>0);
+  let totalAllocated = 0;
+  let totalExpenseCost = 0;
+  let excludedCost = 0;
+  let unallocated = 0;
+  const dayRows = [];
+
+  expenseData.forEach(v=>{ totalExpenseCost += v.cost; if(expDatesInvalid(v)) excludedCost += v.cost; });
+
+  const computable = expenseData.filter(v=>!expDatesInvalid(v));
+  if(computable.length){
+    const rangeStart = new Date(Math.min(...computable.map(v=>parseDate(v.start).getTime())));
+    const rangeEnd   = new Date(Math.max(...computable.map(v=>parseDate(v.end).getTime())));
+
+    for(let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate()+1)){
+      const dateStr = ymd(d);
+      let dayCost = 0;
+      computable.forEach(v=>{
+        const s = parseDate(v.start), e = parseDate(v.end);
+        if(d>=s && d<=e){ dayCost += v.cost/daysBetween(v.start,v.end); }
+      });
+
+      const presentIdx = [];
+      groupData.forEach((f,i)=>{
+        if(!(f.name && f.name.trim())) return; // unnamed rows aren't participants yet — don't let them absorb (and lose) cost
+        if(grpDatesInvalid(f)) return;         // rows with a broken date range are flagged above and left out
+        const s = parseDate(f.arrive), e = parseDate(f.depart);
+        if(d>=s && d<=e){ presentIdx.push(i); rowDaysPresent[i]++; }
+      });
+
+      let shareLine = '';
+      if(dayCost>0 && presentIdx.length>0){
+        if(splitMethod==='group'){
+          const byName = {};
+          presentIdx.forEach(i=>{
+            const n = groupData[i].name || `(row ${i+1})`;
+            if(!byName[n]) byName[n]=[];
+            byName[n].push(i);
+          });
+          const namesPresent = Object.keys(byName);
+          const perGroupShare = dayCost/namesPresent.length;
+          namesPresent.forEach(n=>{
+            const rows = byName[n];
+            const totalPeopleInGroup = rows.reduce((s,i)=>s+peopleOf(i),0) || 1;
+            rows.forEach(i=>{
+              rowTotals[i] += perGroupShare * (peopleOf(i)/totalPeopleInGroup);
+            });
+          });
+          totalAllocated += dayCost;
+          shareLine = namesPresent.join(', ');
+        } else {
+          const totalPeople = presentIdx.reduce((s,i)=>s+peopleOf(i),0) || 1;
+          presentIdx.forEach(i=>{ rowTotals[i] += dayCost * (peopleOf(i)/totalPeople); });
+          totalAllocated += dayCost;
+          shareLine = [...new Set(presentIdx.map(i=>groupData[i].name || '(unnamed)'))].join(', ');
+        }
+      } else if(dayCost>0 && presentIdx.length===0){
+        unallocated += dayCost;
+        shareLine = '⚠ no group marked present';
+      }
+
+      dayRows.push({date:dateStr, cost:dayCost, who:shareLine});
+    }
+  }
+
+  const rowTbody = document.getElementById('rowResults');
+  rowTbody.innerHTML='';
+  const namedRows = groupData.map((f,i)=>({f,i})).filter(({f})=>f.name && f.name.trim()!=='');
+  const names = uniqueGroupNames();
+  const aggFairShare = {}; names.forEach(n=>aggFairShare[n]=0);
+  groupData.forEach((f,i)=>{ if(f.name) aggFairShare[f.name]+=rowTotals[i]; });
+  if(namedRows.length===0){
+    rowTbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:14px;">No groups yet — add one above.</td></tr>';
+  } else {
+    names.forEach(n=>{
+      const rows = namedRows.filter(({f})=>f.name===n);
+      const hasSubgroups = rows.length > 1;
+      const groupId = groupDomId(n);
+      const isOpen = expandedGroups.has(n);
+      const dayCounts = rows.map(({i})=>rowDaysPresent[i]);
+      const minDays = Math.min(...dayCounts);
+      const maxDays = Math.max(...dayCounts);
+      const daysLabel = minDays === maxDays ? String(minDays) : 'varies';
+      const tr = document.createElement('tr');
+      if(hasSubgroups){
+        tr.innerHTML = `<td><div class="group-namecell"><button class="group-expander" data-group="${esc(n)}" aria-label="${isOpen?'Collapse':'Expand'} ${esc(n)}" aria-expanded="${isOpen}">${isOpen?'-':'+'}</button><div class="group-namebody"><b>${esc(n)}</b> <span class="grouptag">${rows.length} sub-groups</span></div></div></td><td style="text-align:right;color:var(--muted);">${daysLabel}</td><td class="sharecell">${fmt(aggFairShare[n])}</td>`;
+      } else {
+        const {f,i} = rows[0];
+        tr.innerHTML = `<td><div class="group-namecell"><span></span><div class="group-namebody"><b>${esc(n)}</b> <span style="color:var(--muted);font-size:12px;">(${f.arrive} → ${f.depart}, ${peopleOf(i)}p)</span></div></div></td><td style="text-align:right;color:var(--muted);">${rowDaysPresent[i]}</td><td class="sharecell">${fmt(rowTotals[i])}</td>`;
+      }
+      rowTbody.appendChild(tr);
+      if(hasSubgroups && isOpen){
+        rows.forEach(({f,i})=>{
+          const sub = document.createElement('tr');
+          sub.className = 'subgroup-row';
+          sub.dataset.parent = groupId;
+          sub.innerHTML = `<td class="subgroup-label"><b>${peopleOf(i)}p</b> ${esc(f.arrive)} → ${esc(f.depart)}</td><td style="text-align:right;color:var(--muted);">${rowDaysPresent[i]}</td><td class="sharecell">${fmt(rowTotals[i])}</td>`;
+          rowTbody.appendChild(sub);
+        });
+      }
+    });
+  }
+
+  const alreadyPaid = {}; names.forEach(n=>alreadyPaid[n]=0);
+  let unmatchedPaid = 0;
+  const unmatchedExpenses = [];
+  expenseData.forEach(v=>{
+    if(expDatesInvalid(v)) return; // excluded from allocation above — so don't credit it as paid either, or nets won't balance
+    if(v.paidBy && alreadyPaid.hasOwnProperty(v.paidBy)){ alreadyPaid[v.paidBy]+=v.cost; }
+    else if(v.paidBy){ unmatchedPaid += v.cost; unmatchedExpenses.push(v.name||'(unnamed expense)'); }
+  });
+
+  const net = {}; names.forEach(n=> net[n] = aggFairShare[n]-alreadyPaid[n]);
+
+  const famTbody = document.getElementById('groupResults');
+  famTbody.innerHTML='';
+  if(names.length===0){
+    famTbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">No groups yet — add one above.</td></tr>';
+  } else {
+    names.forEach(n=>{
+      const nt = net[n];
+      const netLabel = Math.abs(nt)<0.01 ? fmt(0) : (nt>0 ? fmt(nt)+' owed' : fmt(-nt)+' back');
+      const netColor = Math.abs(nt)<0.01 ? 'var(--muted)' : (nt>0 ? 'var(--coral)' : 'var(--good)');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${esc(n)}</td><td style="text-align:right;color:var(--muted);">${fmt(aggFairShare[n])}</td><td style="text-align:right;color:var(--muted);">${fmt(alreadyPaid[n])}</td><td style="text-align:right;font-weight:700;color:${netColor}">${netLabel}</td>`;
+      famTbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('checkLeft').textContent = `Total expense cost: ${fmt(totalExpenseCost)}`;
+  const rightEl = document.getElementById('checkRight');
+  const notes = [];
+  if(unallocated > 0.01) notes.push(`<span class="warn">${fmt(unallocated)} unallocated (no group present those days)</span>`);
+  if(excludedCost > 0.01) notes.push(`<span class="warn">${fmt(excludedCost)} excluded (fix date errors above)</span>`);
+  if(notes.length){
+    rightEl.innerHTML = `Allocated: ${fmt(totalAllocated)} · ` + notes.join(' · ');
+  } else {
+    rightEl.innerHTML = `Allocated: <span class="ok">${fmt(totalAllocated)}</span> ✓ matches total`;
+  }
+
+  let debtors = names.map(n=>({name:n, amt:net[n]})).filter(x=>x.amt>0.01);
+  let creditors = names.map(n=>({name:n, amt:-net[n]})).filter(x=>x.amt>0.01);
+  debtors.sort((a,b)=>b.amt-a.amt);
+  creditors.sort((a,b)=>b.amt-a.amt);
+  const settleList = document.getElementById('settleList');
+  const settleNone = document.getElementById('settleNone');
+  settleList.innerHTML='';
+  let di=0, ci=0;
+  const txns=[];
+  while(di<debtors.length && ci<creditors.length){
+    const pay = Math.min(debtors[di].amt, creditors[ci].amt);
+    if(pay>0.01) txns.push({from:debtors[di].name, to:creditors[ci].name, amt:pay});
+    debtors[di].amt -= pay; creditors[ci].amt -= pay;
+    if(debtors[di].amt<0.01) di++;
+    if(creditors[ci].amt<0.01) ci++;
+  }
+  if(txns.length===0){
+    settleNone.style.display='block';
+  } else {
+    settleNone.style.display='none';
+    txns.forEach(t=>{
+      const li = document.createElement('li');
+      li.innerHTML = `<b>${esc(t.from)}</b> pays <b>${esc(t.to)}</b> — <span style="font-family:Georgia,serif;color:var(--coral);font-weight:700;">${fmt(t.amt)}</span>`;
+      settleList.appendChild(li);
+    });
+  }
+  const warnEl = document.getElementById('unmatchedWarn');
+  if(unmatchedExpenses.length){
+    warnEl.style.display='block';
+    warnEl.textContent = `⚠ "Paid by" for ${unmatchedExpenses.join(', ')} doesn't match any current group name — that cost ($${unmatchedPaid.toFixed(2)}) isn't credited to anyone yet.`;
+  } else {
+    warnEl.style.display='none';
+  }
+
+  const dbTable = document.getElementById('daybreakTable');
+  dbTable.innerHTML = '<thead><tr><th>Date</th><th style="text-align:right">Active expense cost</th><th>Split among</th></tr></thead>' +
+    '<tbody>' + dayRows.map(r=>`<tr><td>${r.date}</td><td style="text-align:right">${r.cost>0?fmt(r.cost):'—'}</td><td>${r.who?esc(r.who):'—'}</td></tr>`).join('') + '</tbody>';
+
+  const unnamedCount = groupData.filter(f=>!(f.name && f.name.trim())).length;
+  const anyNamed = groupData.some(f=>f.name && f.name.trim());
+  const unnamedEl = document.getElementById('unnamedWarn');
+  if(unnamedCount>0 && anyNamed){
+    unnamedEl.style.display='block';
+    unnamedEl.textContent = `⚠ ${unnamedCount} group row${unnamedCount>1?'s have':' has'} no name and ${unnamedCount>1?'were':'was'} left out of the split — name ${unnamedCount>1?'them':'it'} to include ${unnamedCount>1?'their':'its'} share.`;
+  } else {
+    unnamedEl.style.display='none';
+  }
+
+  save();
+}
+
+async function init(){
+  if(!(await loadSharedDataFromHash())) loadStored();
+  setMethodButtons();
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>
