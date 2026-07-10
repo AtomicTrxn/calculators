@@ -9,3 +9,11 @@ A collection of self-contained browser calculators.
 Open `index.html` to start from the calculator landing page.
 
 Share links store calculator data in the URL hash using a compact browser-readable format. Older compressed links from development builds still load in browsers that support built-in gzip decompression.
+
+## Checks
+
+Run this before committing page changes:
+
+```sh
+node scripts/check-links.js
+```
