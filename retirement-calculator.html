@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculators · Retirement Planner</title>
+<style>
+  :root{
+    --navy:#2e3440;
+    --teal:#88c0d0;
+    --sand:#e5e9f0;
+    --paper:#eceff4;
+    --ink:#2e3440;
+    --muted:#4c566a;
+    --coral:#bf616a;
+    --line:#d8dee9;
+    --good:#a3be8c;
+    --gold:#ebcb8b;
+    --frost:#5e81ac;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--sand);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:32px 16px 64px;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .topnav{margin-bottom:18px;}
+  .backlink{color:var(--muted);font-size:13px;text-decoration:none;font-weight:600;}
+  .backlink:hover{color:var(--navy);text-decoration:underline;}
+  header{border-bottom:2px solid var(--navy);padding-bottom:18px;margin-bottom:20px;}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:700;margin-bottom:6px;}
+  h1{font-family:Georgia,'Iowan Old Style',serif;font-size:34px;margin:0 0 6px;color:var(--navy);letter-spacing:.01em;}
+  .sub{color:var(--muted);font-size:14.5px;line-height:1.5;max-width:680px;}
+  .toolbar{display:grid;gap:10px;margin-bottom:24px;align-items:start;}
+  .toolbar-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .toolbtn{border:1px solid var(--navy);background:var(--paper);color:var(--navy);border-radius:4px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;}
+  .toolbtn:hover{background:var(--navy);color:var(--sand);}
+  .toolbtn.secondary{border-color:var(--line);color:var(--muted);}
+  .toolbtn.secondary:hover{background:var(--line);color:var(--ink);}
+  .toolbtn.danger{border-color:var(--coral);color:var(--coral);}
+  .toolbtn.danger:hover{background:var(--coral);color:#fff;}
+  .toolstatus{flex-basis:100%;color:var(--muted);font-size:12px;line-height:1.4;min-height:16px;}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px 22px;margin-bottom:22px;box-shadow:0 1px 0 rgba(31,48,64,.04);}
+  .card h2{font-family:Georgia,serif;font-size:16px;color:var(--navy);margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .card h2 .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--navy);color:var(--sand);font-size:11px;font-family:Georgia,serif;flex:none;}
+  .card p.hint{color:var(--muted);font-size:12.5px;margin:0 0 14px;line-height:1.5;}
+  label.fld{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px;}
+  .fld-note{font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 18px;}
+  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px 18px;}
+  input[type=text], input[type=number], input[type=date], select{width:100%;border:1px solid var(--line);background:#fff;border-radius:3px;padding:7px 8px;font-size:13.5px;color:var(--ink);font-family:inherit;}
+  input.invalid{border-color:var(--coral) !important;background:#fbe9eb;}
+  .inline-suffix{position:relative;}
+  .inline-suffix input{padding-right:26px;}
+  .inline-suffix .suffix{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 8px 8px;border-bottom:1px solid var(--line);}
+  td{padding:6px 8px;border-bottom:1px solid #e3e8f0;vertical-align:middle;}
+  .rowbtns{display:flex;gap:6px;}
+  .iconbtn{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+  .iconbtn:hover{background:var(--sand);color:var(--navy);}
+  .addbtn{margin-top:10px;border:1px dashed var(--teal);background:transparent;color:var(--teal);border-radius:3px;padding:7px 12px;font-size:12.5px;cursor:pointer;font-weight:600;}
+  .addbtn:hover{background:rgba(79,138,143,.08);}
+  .segmented{display:inline-flex;border:1px solid var(--navy);border-radius:4px;overflow:hidden;flex-wrap:wrap;}
+  .segmented button{border:none;background:var(--paper);color:var(--navy);padding:8px 15px;font-size:12.5px;cursor:pointer;font-weight:600;}
+  .segmented button.active{background:var(--navy);color:var(--sand);}
+  .toggle{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink);font-weight:600;cursor:pointer;margin-bottom:2px;}
+  .toggle input{width:auto;}
+  .subfields{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);}
+  .subfields[hidden]{display:none;}
+  details{margin-top:16px;}
+  summary{cursor:pointer;font-size:12.5px;color:var(--teal);font-weight:600;}
+  .warnbox{color:var(--coral);font-size:12px;margin:12px 0 0;display:none;line-height:1.6;}
+  .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:30px;}
+
+  /* results */
+  .verdict-card{background:var(--navy);color:var(--sand);border-color:var(--navy);}
+  .verdict-card h2{color:var(--sand);}
+  .verdict-card p.hint{color:#c9d2e0;}
+  .verdict-top{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;}
+  .verdict-num{font-family:Georgia,serif;font-size:58px;line-height:1;font-weight:700;}
+  .verdict-num.good{color:var(--good);}
+  .verdict-num.warn{color:var(--gold);}
+  .verdict-num.bad{color:var(--coral);}
+  .verdict-label{font-size:15px;font-weight:700;margin-bottom:4px;}
+  .verdict-desc{font-size:13px;color:#c9d2e0;line-height:1.5;}
+  .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:18px;}
+  .metric{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:4px;padding:11px 13px;}
+  .metric .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:#aeb9cc;margin-bottom:5px;}
+  .metric .val{font-family:Georgia,serif;font-size:20px;font-weight:700;color:var(--sand);}
+  .metric .val.small{font-size:15px;}
+  .calc-flag{font-size:11.5px;color:var(--gold);margin-top:12px;min-height:14px;}
+
+  .nudges{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .nudge{border:1px solid var(--line);background:#fff;border-radius:4px;padding:10px 13px;font-size:12.5px;cursor:pointer;text-align:left;min-width:150px;}
+  .nudge:hover{border-color:var(--frost);}
+  .nudge b{display:block;color:var(--navy);margin-bottom:3px;font-size:13px;}
+  .nudge .delta{font-weight:700;}
+  .nudge .delta.up{color:var(--good);}
+  .nudge .delta.down{color:var(--coral);}
+  .nudge .delta.flat{color:var(--muted);}
+
+  .fan-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:10px;}
+  .fan-legend span{display:inline-flex;align-items:center;gap:6px;}
+  .swatch{width:14px;height:10px;border-radius:2px;display:inline-block;}
+
+  .real-toggle{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:2px 0 0;}
+  .real-toggle input{width:auto;}
+  .yeartable{font-size:12px;margin-top:4px;}
+  .yeartable th,.yeartable td{padding:5px 8px;white-space:nowrap;}
+  .yeartable td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  .yeartable tr.retire-start td{border-top:2px solid var(--frost);}
+  .depleted{color:var(--coral);font-weight:700;}
+
+  .scenario-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .scenario-col{border:1px solid var(--line);border-radius:4px;padding:14px;background:#fff;}
+  .scenario-col h3{margin:0 0 8px;font-family:Georgia,serif;font-size:14px;color:var(--navy);}
+  .scenario-empty{color:var(--muted);font-size:12.5px;}
+  .scenario-line{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line);}
+  .scenario-line .lab{color:var(--muted);}
+
+  @media (max-width:640px){
+    body{padding:20px 10px 48px;}
+    h1{font-size:26px;}
+    .verdict-top{grid-template-columns:1fr;gap:10px;text-align:center;}
+    .scenario-grid{grid-template-columns:1fr;}
+    .scroller table{min-width:640px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="topnav" aria-label="Calculator navigation">
+    <a class="backlink" href="index.html">All calculators</a>
+  </nav>
+  <header>
+    <div class="eyebrow">Plan honestly · everything on this device</div>
+    <h1>Retirement Planner</h1>
+    <p class="sub">Projects your savings year by year through retirement, then runs a thousand market simulations to answer the real question: <b>how likely is this plan to last?</b> Every assumption is on-screen and editable, spending is phased and includes healthcare, and nothing leaves your browser.</p>
+  </header>
+
+  <div class="toolbar">
+    <div class="toolbar-row">
+      <button class="toolbtn" onclick="copyShareLink()">Copy shareable link</button>
+    </div>
+    <div class="toolbar-row">
+      <button class="toolbtn" onclick="openCsvImport()">Import CSV data</button>
+      <button class="toolbtn" onclick="exportCsvData()">Export CSV data</button>
+      <button class="toolbtn" onclick="loadSampleData()">Load sample data</button>
+    </div>
+    <div class="toolbar-row">
+      <button class="toolbtn danger" onclick="clearForm()">Reset to defaults</button>
+    </div>
+    <input id="csvImportInput" type="file" accept=".csv,text/csv" multiple style="display:none">
+    <div id="csvStatus" class="toolstatus" aria-live="polite"></div>
+  </div>
+
+  <!-- RESULTS (top so edits show impact immediately) -->
+  <div class="card verdict-card">
+    <h2><span class="n">✓</span>Will this plan last?</h2>
+    <p class="hint">Share of <span id="mcIters">1,000</span> simulated market histories in which your money lasts to your end-of-plan age. A year covered entirely by guaranteed income counts as lasting.</p>
+    <div class="verdict-top">
+      <div>
+        <div class="verdict-num" id="successNum">—</div>
+      </div>
+      <div>
+        <div class="verdict-label" id="verdictLabel">—</div>
+        <div class="verdict-desc" id="verdictDesc">Enter your details below and this updates automatically.</div>
+      </div>
+    </div>
+    <div class="metric-grid">
+      <div class="metric"><div class="k">Median ending balance</div><div class="val" id="mMedian">—</div></div>
+      <div class="metric"><div class="k">Rough case (10th pct)</div><div class="val small" id="mLow">—</div></div>
+      <div class="metric"><div class="k">Good case (90th pct)</div><div class="val small" id="mHigh">—</div></div>
+      <div class="metric"><div class="k">Steady-return outcome</div><div class="val small" id="mDet">—</div></div>
+    </div>
+    <div class="calc-flag" id="calcFlag"></div>
+  </div>
+
+  <!-- FAN CHART -->
+  <div class="card">
+    <h2><span class="n">📈</span>Range of outcomes over time</h2>
+    <p class="hint">The band shows where your portfolio is likely to sit each year — the 10th–90th percentile spread across all simulations, with the median line inside it. A band sinking to zero before your end-of-plan age is the shortfall risk a single-number calculator hides.</p>
+    <div class="scroller"><div id="fanChart"></div></div>
+    <div class="fan-legend">
+      <span><i class="swatch" style="background:rgba(94,129,172,.22)"></i> 10th–90th percentile</span>
+      <span><i class="swatch" style="background:var(--frost)"></i> Median path</span>
+      <span><i class="swatch" style="background:var(--coral)"></i> Retirement begins</span>
+    </div>
+  </div>
+
+  <!-- 1. ABOUT YOU -->
+  <div class="card">
+    <h2><span class="n">1</span>About you</h2>
+    <div class="grid3">
+      <div><label class="fld">Current age</label><input type="number" data-path="you.currentAge" data-type="int"></div>
+      <div><label class="fld">Planned retirement age</label><input type="number" data-path="you.retireAge" data-type="int"></div>
+      <div><label class="fld">Plan through age <span class="fld-note">(life expectancy)</span></label><input type="number" data-path="you.endAge" data-type="int"></div>
+    </div>
+    <p class="warnbox" id="planWarn"></p>
+  </div>
+
+  <!-- 2. SAVINGS TODAY -->
+  <div class="card">
+    <h2><span class="n">2</span>Savings today</h2>
+    <p class="hint">Split by tax treatment so withdrawals later are taxed correctly. A traditional-401(k) dollar is worth less than a Roth dollar.</p>
+    <div class="grid3">
+      <div><label class="fld">Taxable / brokerage</label><div class="inline-suffix"><input type="number" data-path="accounts.taxable" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">Traditional (pre-tax)</label><div class="inline-suffix"><input type="number" data-path="accounts.traditional" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">Roth</label><div class="inline-suffix"><input type="number" data-path="accounts.roth" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">Cash / savings</label><div class="inline-suffix"><input type="number" data-path="accounts.cash" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">HSA</label><div class="inline-suffix"><input type="number" data-path="accounts.hsa" data-type="money"><span class="suffix">$</span></div></div>
+    </div>
+  </div>
+
+  <!-- 3. CONTRIBUTIONS -->
+  <div class="card">
+    <h2><span class="n">3</span>Annual contributions <span style="font-weight:400;font-size:12px;color:var(--muted);">— until retirement</span></h2>
+    <div class="grid3">
+      <div><label class="fld">To taxable</label><div class="inline-suffix"><input type="number" data-path="contributions.taxable" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">To traditional</label><div class="inline-suffix"><input type="number" data-path="contributions.traditional" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">To Roth</label><div class="inline-suffix"><input type="number" data-path="contributions.roth" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">To HSA</label><div class="inline-suffix"><input type="number" data-path="contributions.hsa" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">Employer match <span class="fld-note">(to traditional)</span></label><div class="inline-suffix"><input type="number" data-path="contributions.employerMatch" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">Contribution growth <span class="fld-note">(raises)</span></label><div class="inline-suffix"><input type="number" data-path="assumptions.contributionGrowth" data-type="pct" step="0.5"><span class="suffix">%</span></div></div>
+    </div>
+  </div>
+
+  <!-- 4. RETIREMENT INCOME -->
+  <div class="card">
+    <h2><span class="n">4</span>Guaranteed retirement income</h2>
+    <p class="hint">Amounts in today's dollars. Social Security uses your benefit at full retirement age (67); the claim-age selector adjusts it (claim at 62 ≈ 70%, at 70 ≈ 124%). "COLA" means it rises with inflation.</p>
+    <div class="scroller">
+    <table>
+      <thead><tr><th style="width:26%">Source</th><th style="width:20%">Annual amount</th><th style="width:22%">Starts at</th><th style="width:16%">Inflation-adjusted</th><th style="width:6%"></th></tr></thead>
+      <tbody id="incomeRows"></tbody>
+    </table>
+    </div>
+    <button class="addbtn" onclick="addIncome()">+ Add income source</button>
+  </div>
+
+  <!-- 5. SPENDING PLAN -->
+  <div class="card">
+    <h2><span class="n">5</span>Spending plan</h2>
+    <p class="hint">Budget from what you plan to spend, not a percentage of today's income. Turn on phasing to model an active early retirement that slows down later.</p>
+
+    <div class="grid2" id="baselineWrap">
+      <div><label class="fld">Annual spending in retirement <span class="fld-note">(today's $)</span></label><div class="inline-suffix"><input type="number" data-path="spending.baseline" data-type="money"><span class="suffix">$</span></div></div>
+    </div>
+
+    <div class="subfields" style="border-top:none;padding-top:8px;margin-top:8px;">
+      <label class="toggle"><input type="checkbox" data-path="spending.phased.enabled" data-type="bool"> Phase spending (go-go / slow-go / no-go)</label>
+      <div class="subfields" id="phasedFields" hidden>
+        <div class="grid3">
+          <div><label class="fld">Go-go spending</label><div class="inline-suffix"><input type="number" data-path="spending.phased.goGo" data-type="money"><span class="suffix">$</span></div></div>
+          <div><label class="fld">Slows down at age</label><input type="number" data-path="spending.phased.slowGoAge" data-type="int"></div>
+          <div><label class="fld">Slow-go spending</label><div class="inline-suffix"><input type="number" data-path="spending.phased.slowGo" data-type="money"><span class="suffix">$</span></div></div>
+          <div><label class="fld">No-go at age</label><input type="number" data-path="spending.phased.noGoAge" data-type="int"></div>
+          <div><label class="fld">No-go spending</label><div class="inline-suffix"><input type="number" data-path="spending.phased.noGo" data-type="money"><span class="suffix">$</span></div></div>
+        </div>
+        <p class="hint" style="margin:12px 0 0;">When phasing is on, this replaces the single annual-spending figure above.</p>
+      </div>
+    </div>
+
+    <div class="subfields">
+      <label class="toggle"><input type="checkbox" data-path="spending.healthcare.enabled" data-type="bool"> Model healthcare separately</label>
+      <div class="subfields" id="healthcareFields" hidden>
+        <div class="grid3">
+          <div><label class="fld">Pre-Medicare premium <span class="fld-note">(before 65)</span></label><div class="inline-suffix"><input type="number" data-path="spending.healthcare.preMedicarePremium" data-type="money"><span class="suffix">$</span></div></div>
+          <div><label class="fld">Medicare cost <span class="fld-note">(65+)</span></label><div class="inline-suffix"><input type="number" data-path="spending.healthcare.medicareAnnual" data-type="money"><span class="suffix">$</span></div></div>
+          <div><label class="fld">IRMAA tier <span class="fld-note">(high-income surcharge)</span></label>
+            <select data-path="spending.healthcare.irmaaTier" data-type="int">
+              <option value="0">None</option><option value="1">Tier 1</option><option value="2">Tier 2</option>
+              <option value="3">Tier 3</option><option value="4">Tier 4</option><option value="5">Tier 5</option>
+            </select></div>
+          <div><label class="fld">Medical inflation</label><div class="inline-suffix"><input type="number" data-path="spending.healthcare.medicalInflation" data-type="pct" step="0.5"><span class="suffix">%</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subfields">
+      <label class="toggle"><input type="checkbox" data-path="spending.ltc.enabled" data-type="bool"> Include a long-term-care event</label>
+      <div class="subfields" id="ltcFields" hidden>
+        <div class="grid3">
+          <div><label class="fld">Annual cost</label><div class="inline-suffix"><input type="number" data-path="spending.ltc.annualCost" data-type="money"><span class="suffix">$</span></div></div>
+          <div><label class="fld">Starting at age</label><input type="number" data-path="spending.ltc.startAge" data-type="int"></div>
+          <div><label class="fld">For how many years</label><input type="number" data-path="spending.ltc.years" data-type="int"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subfields">
+      <label class="fld" style="margin-bottom:8px;">One-off events <span class="fld-note">(home sale, inheritance — use a negative amount for money coming in)</span></label>
+      <div class="scroller">
+      <table>
+        <thead><tr><th style="width:44%">Description</th><th style="width:26%">Amount</th><th style="width:22%">At age</th><th style="width:6%"></th></tr></thead>
+        <tbody id="oneOffRows"></tbody>
+      </table>
+      </div>
+      <button class="addbtn" onclick="addOneOff()">+ Add one-off event</button>
+    </div>
+  </div>
+
+  <!-- 6. ASSUMPTIONS -->
+  <div class="card">
+    <h2><span class="n">6</span>Assumptions</h2>
+    <p class="hint">Nothing here is hidden. These are common planning defaults, deliberately a touch conservative — change any of them and watch the result move.</p>
+    <div class="grid3">
+      <div><label class="fld">Return before retirement</label><div class="inline-suffix"><input type="number" data-path="assumptions.returnAccum" data-type="pct" step="0.5"><span class="suffix">%</span></div></div>
+      <div><label class="fld">Return during retirement</label><div class="inline-suffix"><input type="number" data-path="assumptions.returnRetire" data-type="pct" step="0.5"><span class="suffix">%</span></div></div>
+      <div><label class="fld">Market volatility <span class="fld-note">(std dev)</span></label><div class="inline-suffix"><input type="number" data-path="assumptions.volatility" data-type="pct" step="0.5"><span class="suffix">%</span></div></div>
+      <div><label class="fld">General inflation</label><div class="inline-suffix"><input type="number" data-path="assumptions.inflation" data-type="pct" step="0.5"><span class="suffix">%</span></div></div>
+      <div><label class="fld">Effective tax rate <span class="fld-note">(on taxable withdrawals)</span></label><div class="inline-suffix"><input type="number" data-path="assumptions.taxRate" data-type="pct" step="1"><span class="suffix">%</span></div></div>
+      <div><label class="fld">Taxable gain fraction <span class="fld-note">(share of a brokerage sale that is taxed)</span></label><div class="inline-suffix"><input type="number" data-path="assumptions.taxableGainFraction" data-type="pct" step="5"><span class="suffix">%</span></div></div>
+    </div>
+    <details>
+      <summary>How this works &amp; what we assume</summary>
+      <p class="hint" style="margin-top:10px;">This is an educational estimate, not financial or tax advice. It projects one year at a time from your current age to your end-of-plan age. Before retirement it adds contributions and grows balances; after retirement it covers each year's spending from guaranteed income first, then withdraws from your accounts in order (cash → taxable → traditional → Roth), grossing up for taxes and applying required minimum distributions from age 73. The Monte Carlo draws each year's return from a normal distribution around your return assumption using the volatility above. Taxes are modeled with a single effective rate — good enough to show that account type matters, not a substitute for a tax pro. Results are only as good as your inputs.</p>
+    </details>
+  </div>
+
+  <!-- 7. STRATEGY -->
+  <div class="card">
+    <h2><span class="n">7</span>Withdrawal strategy</h2>
+    <div class="grid2">
+      <div>
+        <label class="fld">Spending method</label>
+        <div class="segmented" id="methodToggle">
+          <button data-m="fixedReal" class="active">Steady (inflation-adjusted)</button>
+          <button data-m="fourPercent">4% rule</button>
+          <button data-m="guardrails">Guardrails</button>
+        </div>
+      </div>
+      <div>
+        <label class="fld">Simulations to run</label>
+        <select data-path="strategy.monteCarloIterations" data-type="int">
+          <option value="500">500 (faster)</option>
+          <option value="1000">1,000 (recommended)</option>
+          <option value="2000">2,000</option>
+          <option value="5000">5,000 (slower, smoother)</option>
+        </select>
+      </div>
+    </div>
+    <p class="hint" id="methodHint" style="margin-top:12px;"></p>
+  </div>
+
+  <!-- 8. SENSITIVITY -->
+  <div class="card">
+    <h2><span class="n">8</span>What would move the needle?</h2>
+    <p class="hint">One-tap "what if" tests. Each re-runs the simulation with a single change and shows the effect on your success rate — it does not alter your plan.</p>
+    <div class="nudges" id="nudges"></div>
+  </div>
+
+  <!-- 9. YEAR BY YEAR -->
+  <div class="card">
+    <h2><span class="n">9</span>Year-by-year detail</h2>
+    <label class="real-toggle"><input type="checkbox" id="realToggle"> Show in today's dollars (inflation-adjusted)</label>
+    <details>
+      <summary>Show the full projection (steady-return path)</summary>
+      <div class="scroller">
+        <table class="yeartable" id="yearTable"></table>
+      </div>
+    </details>
+  </div>
+
+  <!-- 10. SCENARIOS -->
+  <div class="card">
+    <h2><span class="n">10</span>Compare two scenarios</h2>
+    <p class="hint">Save your current plan into slot A or B, change some inputs, save the other, and compare them side by side — "retire at 62 vs. 65," "claim Social Security at 67 vs. 70."</p>
+    <div class="toolbar-row" style="margin-bottom:14px;">
+      <button class="toolbtn secondary" onclick="saveScenario('A')">Save current as A</button>
+      <button class="toolbtn secondary" onclick="saveScenario('B')">Save current as B</button>
+      <button class="toolbtn secondary" onclick="clearScenarios()">Clear both</button>
+    </div>
+    <div class="scenario-grid">
+      <div class="scenario-col" id="scenarioA"><h3>Scenario A</h3><div class="scenario-empty">Not saved yet.</div></div>
+      <div class="scenario-col" id="scenarioB"><h3>Scenario B</h3><div class="scenario-empty">Not saved yet.</div></div>
+    </div>
+  </div>
+
+  <footer>Edit any field and the planner recalculates automatically. Your data stays in this browser unless you export it or create a share link. This tool is an educational estimate, not financial advice.</footer>
+</div>
+
+<script src="retirement-engine.js"></script>
+<script>
+const E = window.RetirementEngine;
+const STORE_KEY = 'retirementCalculator.v1';
+const SCENARIO_KEY = 'retirementCalculator.scenarios.v1';
+const SEED = 0x5eed1234; // fixed so recomputes are stable (no flicker between edits)
+
+let state = E.normalizeState(E.defaultState());
+let displayReal = false;
+let scenarios = { A: null, B: null };
+let lastResult = null;
+
+// ---- path helpers --------------------------------------------------------
+function getByPath(obj, path){
+  return path.split('.').reduce((o,k)=> (o==null?undefined:o[k]), obj);
+}
+function setByPath(obj, path, value){
+  const keys = path.split('.');
+  let o = obj;
+  for(let i=0;i<keys.length-1;i++){
+    const k = keys[i];
+    const nextIsIndex = /^\d+$/.test(keys[i+1]);
+    if(o[k]==null) o[k] = nextIsIndex ? [] : {};
+    o = o[k];
+  }
+  o[keys[keys.length-1]] = value;
+}
+
+function fmt(n){
+  if(!Number.isFinite(n)) return '—';
+  const neg = n<0; n = Math.abs(n);
+  return (neg?'-$':'$') + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+function fmtPct(x){ return (x*100).toFixed(x>=0.1?0:1) + '%'; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function realFactor(t){ return displayReal ? Math.pow(1+state.assumptions.inflation, t) : 1; }
+
+// ---- binding -------------------------------------------------------------
+function coerce(el){
+  const type = el.dataset.type;
+  if(type==='bool') return el.checked;
+  if(type==='int'){ const n=parseInt(el.value,10); return Number.isFinite(n)?n:0; }
+  if(type==='money'){ const n=parseFloat(el.value); return Number.isFinite(n)?n:0; }
+  if(type==='pct'){ const n=parseFloat(el.value); return Number.isFinite(n)?n/100:0; }
+  return el.value;
+}
+function displayValue(el, v){
+  const type = el.dataset.type;
+  if(type==='bool'){ el.checked = !!v; return; }
+  if(type==='pct'){ el.value = v==null?'':+( (v*100).toFixed(4) ); return; }
+  el.value = (v==null?'':v);
+}
+function syncInputsFromState(){
+  document.querySelectorAll('[data-path]').forEach(el=>{
+    displayValue(el, getByPath(state, el.dataset.path));
+  });
+  setMethodButtons();
+  toggleSubfields();
+}
+function bindStaticInputs(){
+  document.querySelectorAll('[data-path]').forEach(el=>{
+    const ev = (el.type==='checkbox' || el.tagName==='SELECT') ? 'change' : 'input';
+    el.addEventListener(ev, ()=>{
+      setByPath(state, el.dataset.path, coerce(el));
+      markUserChanged();
+      toggleSubfields();
+      scheduleRecompute();
+    });
+  });
+}
+function toggleSubfields(){
+  document.getElementById('phasedFields').hidden = !state.spending.phased.enabled;
+  document.getElementById('healthcareFields').hidden = !state.spending.healthcare.enabled;
+  document.getElementById('ltcFields').hidden = !state.spending.ltc.enabled;
+  document.getElementById('baselineWrap').style.opacity = state.spending.phased.enabled ? .5 : 1;
+}
+
+// ---- dynamic rows: income & one-offs -------------------------------------
+function renderIncome(){
+  const tb = document.getElementById('incomeRows');
+  tb.innerHTML = '';
+  state.income.forEach((inc,i)=>{
+    const tr = document.createElement('tr');
+    const startCell = inc.type==='socialSecurity'
+      ? `<select data-path="strategy.ssClaimAge" data-type="int">${[62,63,64,65,66,67,68,69,70].map(a=>`<option value="${a}" ${state.strategy.ssClaimAge===a?'selected':''}>Claim at ${a}</option>`).join('')}</select>`
+      : `<input type="number" data-path="income.${i}.startAge" data-type="int">`;
+    tr.innerHTML = `
+      <td><input type="text" data-path="income.${i}.label" ${inc.type==='socialSecurity'?'readonly style="background:var(--sand)"':''}></td>
+      <td><div class="inline-suffix"><input type="number" data-path="income.${i}.amount" data-type="money"><span class="suffix">$</span></div></td>
+      <td>${startCell}</td>
+      <td style="text-align:center"><input type="checkbox" data-path="income.${i}.cola" data-type="bool"></td>
+      <td>${inc.type==='socialSecurity' ? '' : `<button class="iconbtn" title="Remove" onclick="removeIncome(${i})">✕</button>`}</td>`;
+    tb.appendChild(tr);
+  });
+  bindDynamic(tb);
+}
+function renderOneOffs(){
+  const tb = document.getElementById('oneOffRows');
+  tb.innerHTML = '';
+  if(!state.spending.oneOffs.length){
+    tb.innerHTML = '<tr><td colspan="4" style="color:var(--muted);font-size:12.5px;">None. Add a home sale, inheritance, or big purchase.</td></tr>';
+    return;
+  }
+  state.spending.oneOffs.forEach((o,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" data-path="spending.oneOffs.${i}.label"></td>
+      <td><div class="inline-suffix"><input type="number" data-path="spending.oneOffs.${i}.amount" data-type="money"><span class="suffix">$</span></div></td>
+      <td><input type="number" data-path="spending.oneOffs.${i}.age" data-type="int"></td>
+      <td><button class="iconbtn" title="Remove" onclick="removeOneOff(${i})">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  bindDynamic(tb);
+}
+function bindDynamic(container){
+  container.querySelectorAll('[data-path]').forEach(el=>{
+    displayValue(el, getByPath(state, el.dataset.path));
+    const ev = (el.type==='checkbox' || el.tagName==='SELECT') ? 'change' : 'input';
+    el.addEventListener(ev, ()=>{
+      setByPath(state, el.dataset.path, coerce(el));
+      markUserChanged();
+      scheduleRecompute();
+    });
+  });
+}
+function addIncome(){
+  markUserChanged();
+  state.income.push({type:'other', label:'Other income', amount:0, startAge:state.you.retireAge, cola:false});
+  renderIncome(); scheduleRecompute();
+}
+function removeIncome(i){ markUserChanged(); state.income.splice(i,1); renderIncome(); scheduleRecompute(); }
+function addOneOff(){
+  markUserChanged();
+  state.spending.oneOffs.push({label:'', amount:0, age:state.you.retireAge});
+  renderOneOffs(); scheduleRecompute();
+}
+function removeOneOff(i){ markUserChanged(); state.spending.oneOffs.splice(i,1); renderOneOffs(); scheduleRecompute(); }
+
+// ---- method toggle -------------------------------------------------------
+const METHOD_HINTS = {
+  fixedReal: 'Spend your planned budget every year, rising only with inflation. The most common assumption.',
+  fourPercent: 'Withdraw 4% of your portfolio value at retirement, then adjust that dollar amount for inflation — ignores your entered baseline in favor of the classic rule.',
+  guardrails: 'Start from your budget but cut spending after a bad year when your withdrawal rate runs high, and raise it when the portfolio is flush (a simplified Guyton-Klinger).'
+};
+function setMethodButtons(){
+  [...document.getElementById('methodToggle').children].forEach(b=>b.classList.toggle('active', b.dataset.m===state.strategy.withdrawalMethod));
+  document.getElementById('methodHint').textContent = METHOD_HINTS[state.strategy.withdrawalMethod] || '';
+}
+document.getElementById('methodToggle').addEventListener('click',(e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  state.strategy.withdrawalMethod = btn.dataset.m;
+  markUserChanged(); setMethodButtons(); scheduleRecompute();
+});
+document.getElementById('realToggle').addEventListener('change',(e)=>{
+  displayReal = e.target.checked;
+  if(lastResult) renderYearTable(lastResult.det);
+});
+
+// ---- recompute -----------------------------------------------------------
+let recomputeTimer = null;
+function scheduleRecompute(){
+  document.getElementById('calcFlag').textContent = 'Recalculating…';
+  clearTimeout(recomputeTimer);
+  recomputeTimer = setTimeout(recompute, 180);
+}
+function recompute(){
+  const issues = E.validate(state);
+  showIssues(issues);
+  const det = E.projectDeterministic(state);
+  const mc = E.runMonteCarlo(state, { iterations: state.strategy.monteCarloIterations, seed: SEED });
+  lastResult = { det, mc };
+  renderResults(det, mc);
+  renderFanChart(mc);
+  renderYearTable(det);
+  renderNudges();
+  renderScenarios();
+  document.getElementById('calcFlag').textContent = '';
+  save();
+}
+function showIssues(issues){
+  const el = document.getElementById('planWarn');
+  const real = issues.filter(m=>/must be after/.test(m));
+  if(real.length){ el.style.display='block'; el.innerHTML = real.map(m=>'⚠ '+esc(m)).join('<br>'); }
+  else { el.style.display='none'; el.innerHTML=''; }
+}
+
+function renderResults(det, mc){
+  const v = E.verdict(mc.successRate);
+  const numEl = document.getElementById('successNum');
+  numEl.textContent = Math.round(mc.successRate*100) + '%';
+  numEl.className = 'verdict-num ' + v.tone;
+  document.getElementById('verdictLabel').textContent = v.label;
+  document.getElementById('mcIters').textContent = mc.iterations.toLocaleString();
+  let desc;
+  if(mc.successRate>=0.9) desc = 'Across nearly every simulated market history, your money lasts. You may even have room to spend more or retire sooner.';
+  else if(mc.successRate>=0.75) desc = 'Most market histories work out, but a meaningful minority run short. A modest cushion would firm this up.';
+  else if(mc.successRate>=0.5) desc = 'Roughly a coin flip. Small changes — spending less, working longer, or claiming Social Security later — move this a lot.';
+  else desc = 'In most simulations the money runs out early. The what-if tests below show which levers help most.';
+  if(mc.medianDepletionAge) desc += ` In the runs that fail, money typically runs out around age ${mc.medianDepletionAge}.`;
+  document.getElementById('verdictDesc').textContent = desc;
+
+  const endT = state.you.endAge - state.you.currentAge;
+  const rf = displayReal ? Math.pow(1+state.assumptions.inflation, endT) : 1;
+  document.getElementById('mMedian').textContent = fmt(mc.terminal.p50/rf);
+  document.getElementById('mLow').textContent = fmt(mc.terminal.p10/rf);
+  document.getElementById('mHigh').textContent = fmt(mc.terminal.p90/rf);
+  document.getElementById('mDet').textContent = det.depletionAge
+    ? `Runs out at ${det.depletionAge}`
+    : fmt(det.endBalance/rf);
+}
+
+function renderFanChart(mc){
+  const W=920, H=300, padL=64, padR=16, padT=14, padB=28;
+  const bands = mc.bands;
+  if(!bands.length){ document.getElementById('fanChart').innerHTML=''; return; }
+  const ages = bands.map(b=>b.age);
+  const maxV = Math.max(1, ...bands.map(b=>b.p90));
+  const x = i => padL + (W-padL-padR) * (i/(bands.length-1||1));
+  const y = v => padT + (H-padT-padB) * (1 - v/maxV);
+  const retireIdx = Math.max(0, state.you.retireAge - state.you.currentAge);
+
+  const upper = bands.map((b,i)=>`${x(i).toFixed(1)},${y(b.p90).toFixed(1)}`);
+  const lower = bands.map((b,i)=>`${x(i).toFixed(1)},${y(b.p10).toFixed(1)}`).reverse();
+  const areaPts = upper.concat(lower).join(' ');
+  const medianPts = bands.map((b,i)=>`${x(i).toFixed(1)},${y(b.p50).toFixed(1)}`).join(' ');
+
+  // y gridlines
+  const ticks = 4; let grid='';
+  for(let g=0; g<=ticks; g++){
+    const val = maxV*g/ticks; const yy=y(val);
+    grid += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`;
+    grid += `<text x="${padL-8}" y="${(yy+4).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(val).replace(/,000$/,'k').replace(/,\d{3}k/,m=>m)}</text>`;
+  }
+  // x labels (age) ~ every N
+  let xlabels=''; const step = Math.ceil(bands.length/8);
+  for(let i=0;i<bands.length;i+=step){
+    xlabels += `<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${ages[i]}</text>`;
+  }
+  const retireX = x(retireIdx).toFixed(1);
+  const retireLine = (state.you.retireAge>=state.you.currentAge && state.you.retireAge<=state.you.endAge)
+    ? `<line x1="${retireX}" y1="${padT}" x2="${retireX}" y2="${H-padB}" stroke="var(--coral)" stroke-width="1.5" stroke-dasharray="4 3"/>
+       <text x="${retireX}" y="${padT+10}" text-anchor="middle" font-size="10" fill="var(--coral)" font-weight="700">retire</text>` : '';
+
+  document.getElementById('fanChart').innerHTML =
+    `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Range of portfolio outcomes by age">
+       ${grid}
+       <polygon points="${areaPts}" fill="rgba(94,129,172,.22)" stroke="none"/>
+       <polyline points="${medianPts}" fill="none" stroke="var(--frost)" stroke-width="2.2"/>
+       ${retireLine}
+       ${xlabels}
+     </svg>`;
+}
+
+function renderYearTable(det){
+  const rows = det.rows;
+  const head = `<thead><tr><th>Age</th><th class="num">Taxable</th><th class="num">Traditional</th><th class="num">Roth</th><th class="num">Cash/HSA</th><th class="num">Income</th><th class="num">Spending</th><th class="num">Withdrawn</th><th class="num">Tax</th><th class="num">Total</th></tr></thead>`;
+  const body = rows.map(r=>{
+    const rf = realFactor(r.t);
+    const depleted = det.depletionAge!==null && r.age>=det.depletionAge && r.isRetired && r.total<1;
+    return `<tr class="${r.age===state.you.retireAge?'retire-start':''}">
+      <td>${r.age}${r.age===state.you.retireAge?' <span style="color:var(--frost);font-weight:700">▸</span>':''}</td>
+      <td class="num">${fmt(r.taxable/rf)}</td>
+      <td class="num">${fmt(r.traditional/rf)}</td>
+      <td class="num">${fmt(r.roth/rf)}</td>
+      <td class="num">${fmt((r.cash+r.hsa)/rf)}</td>
+      <td class="num">${r.income?fmt(r.income/rf):'—'}</td>
+      <td class="num">${r.spending?fmt(r.spending/rf):'—'}</td>
+      <td class="num">${r.withdrawal?fmt(r.withdrawal/rf):'—'}</td>
+      <td class="num">${r.taxes?fmt(r.taxes/rf):'—'}</td>
+      <td class="num ${depleted?'depleted':''}">${fmt(r.total/rf)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('yearTable').innerHTML = head + '<tbody>' + body + '</tbody>';
+}
+
+// ---- sensitivity nudges --------------------------------------------------
+const NUDGE_ITERS = 500;
+function successOf(mod){
+  const s = JSON.parse(JSON.stringify(state));
+  mod(s);
+  return E.runMonteCarlo(s, { iterations: NUDGE_ITERS, seed: SEED }).successRate;
+}
+function renderNudges(){
+  const base = E.runMonteCarlo(state, { iterations: NUDGE_ITERS, seed: SEED }).successRate;
+  const defs = [
+    { label:'Retire 2 years later', mod:s=>{ s.you.retireAge+=2; } },
+    { label:'Spend $5k/yr less', mod:s=>{ s.spending.baseline=Math.max(0,s.spending.baseline-5000); s.spending.phased.goGo=Math.max(0,s.spending.phased.goGo-5000); s.spending.phased.slowGo=Math.max(0,s.spending.phased.slowGo-5000); s.spending.phased.noGo=Math.max(0,s.spending.phased.noGo-5000); } },
+    { label:'Save $5k/yr more', mod:s=>{ s.contributions.traditional+=5000; } },
+    { label:'Claim Social Security at 70', mod:s=>{ s.strategy.ssClaimAge=70; } },
+    { label:'Live to 100', mod:s=>{ s.you.endAge=Math.max(s.you.endAge,100); } }
+  ];
+  const el = document.getElementById('nudges');
+  el.innerHTML = defs.map(d=>{
+    const nv = successOf(d.mod);
+    const delta = nv - base;
+    const cls = Math.abs(delta)<0.005 ? 'flat' : (delta>0?'up':'down');
+    const sign = delta>0?'+':'';
+    const txt = Math.abs(delta)<0.005 ? 'no change' : `${sign}${Math.round(delta*100)} pts → ${Math.round(nv*100)}%`;
+    return `<div class="nudge"><b>${esc(d.label)}</b><span class="delta ${cls}">${txt}</span></div>`;
+  }).join('');
+}
+
+// ---- scenarios -----------------------------------------------------------
+function metricsFor(s){
+  const mc = E.runMonteCarlo(s, { iterations: 1000, seed: SEED });
+  const det = E.projectDeterministic(s);
+  return {
+    success: mc.successRate, median: mc.terminal.p50,
+    depletion: det.depletionAge, retireAge: s.you.retireAge,
+    endAge: s.you.endAge, spend: s.spending.phased.enabled?s.spending.phased.goGo:s.spending.baseline,
+    ssAge: s.strategy.ssClaimAge
+  };
+}
+function saveScenario(slot){
+  scenarios[slot] = JSON.parse(JSON.stringify(state));
+  try{ localStorage.setItem(SCENARIO_KEY, JSON.stringify(scenarios)); }catch(e){}
+  renderScenarios();
+  setCsvStatus(`Saved current plan as Scenario ${slot}.`);
+}
+function clearScenarios(){
+  scenarios = {A:null,B:null};
+  try{ localStorage.removeItem(SCENARIO_KEY); }catch(e){}
+  renderScenarios();
+}
+function renderScenarios(){
+  ['A','B'].forEach(slot=>{
+    const box = document.getElementById('scenario'+slot);
+    const s = scenarios[slot];
+    if(!s){ box.innerHTML = `<h3>Scenario ${slot}</h3><div class="scenario-empty">Not saved yet.</div>`; return; }
+    const m = metricsFor(E.normalizeState(s));
+    const v = E.verdict(m.success);
+    box.innerHTML = `<h3>Scenario ${slot}</h3>
+      <div class="scenario-line"><span class="lab">Success rate</span><b style="color:var(--${v.tone==='good'?'good':v.tone==='warn'?'gold':'coral'})">${Math.round(m.success*100)}% · ${v.label}</b></div>
+      <div class="scenario-line"><span class="lab">Median ending</span><b>${fmt(m.median)}</b></div>
+      <div class="scenario-line"><span class="lab">Retire / plan to</span><b>${m.retireAge} → ${m.endAge}</b></div>
+      <div class="scenario-line"><span class="lab">Annual spending</span><b>${fmt(m.spend)}</b></div>
+      <div class="scenario-line"><span class="lab">Claim SS at</span><b>${m.ssAge}</b></div>
+      <div class="scenario-line" style="border-bottom:none"><span class="lab">Money runs out</span><b>${m.depletion?('age '+m.depletion):'never (steady case)'}</b></div>
+      <button class="addbtn" style="margin-top:10px" onclick="loadScenario('${slot}')">Load this scenario</button>`;
+  });
+}
+function loadScenario(slot){
+  if(!scenarios[slot]) return;
+  state = E.normalizeState(scenarios[slot]);
+  markUserChanged();
+  fullRender();
+  setCsvStatus(`Loaded Scenario ${slot} into the planner.`);
+}
+
+// ---- share link (mirrors the expense tracker's codec) --------------------
+function bytesToBase64Url(bytes){
+  let binary=''; bytes.forEach(b=>{binary+=String.fromCharCode(b);});
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/g,'');
+}
+function base64UrlToBytes(s){
+  const padded = s.replace(/-/g,'+').replace(/_/g,'/') + '='.repeat((4 - s.length % 4) % 4);
+  return Uint8Array.from(atob(padded), c=>c.charCodeAt(0));
+}
+function supportsShareCompression(){ return typeof CompressionStream!=='undefined' && typeof DecompressionStream!=='undefined'; }
+async function compressBytes(bytes){ const st = new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip')); return new Uint8Array(await new Response(st).arrayBuffer()); }
+async function decompressBytes(bytes){ const st = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip')); return new Uint8Array(await new Response(st).arrayBuffer()); }
+async function encodeShareState(){
+  const bytes = new TextEncoder().encode(JSON.stringify(E.compactState(state)));
+  const uncompressed = 'u.' + bytesToBase64Url(bytes);
+  if(supportsShareCompression()){
+    try{ const z = 'z.'+bytesToBase64Url(await compressBytes(bytes)); return z.length<uncompressed.length?z:uncompressed; }catch(e){}
+  }
+  return uncompressed;
+}
+async function decodeShareState(s){
+  if(s.startsWith('z.')){
+    if(!supportsShareCompression()) throw new Error('Compressed links require DecompressionStream support.');
+    return JSON.parse(new TextDecoder().decode(await decompressBytes(base64UrlToBytes(s.slice(2)))));
+  }
+  const raw = (s.startsWith('u.')||s.startsWith('j.')) ? s.slice(2) : s;
+  return JSON.parse(new TextDecoder().decode(base64UrlToBytes(raw)));
+}
+function shareDataFromHash(){ return new URLSearchParams((location.hash||'').replace(/^#/,'')).get('data'); }
+function clearShareHash(){ if(!shareDataFromHash()) return; const u=new URL(location.href); u.hash=''; history.replaceState(null,'',u); }
+function markUserChanged(){ clearShareHash(); }
+async function loadSharedDataFromHash(){
+  const enc = shareDataFromHash(); if(!enc) return false;
+  try{
+    const restored = E.expandState(await decodeShareState(enc));
+    if(restored && restored.you){ state = E.normalizeState(restored); setCsvStatus('Loaded shared plan from the link.'); return true; }
+  }catch(e){}
+  setCsvStatus('Could not load a shared plan from this link.', true);
+  return false;
+}
+async function copyText(text){
+  if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); return; }
+  const el=document.createElement('textarea'); el.value=text; el.setAttribute('readonly',''); el.style.position='fixed'; el.style.left='-9999px';
+  document.body.appendChild(el); el.select(); document.execCommand('copy'); el.remove();
+}
+async function copyShareLink(){
+  const url = new URL(location.href);
+  url.hash = 'data=' + await encodeShareState();
+  const long = url.toString().length>4000;
+  try{
+    await copyText(url.toString());
+    history.replaceState(null,'',url);
+    setCsvStatus(long?'Copied share link, but it is long — if it does not paste cleanly, use CSV export.':'Copied share link. Your plan is stored in the link; anyone with it can open it.');
+  }catch(e){ setCsvStatus('Could not copy automatically. Use the updated URL in the address bar.', true); location.hash = url.hash; }
+}
+
+// ---- CSV (single Field,Value file that round-trips everything) ------------
+function setCsvStatus(msg,isError=false){ const el=document.getElementById('csvStatus'); if(!el) return; el.textContent=msg||''; el.style.color=isError?'var(--coral)':'var(--muted)'; }
+function csvCell(v){ const s=String(v==null?'':v); return /[",\n\r]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }
+function flatten(obj, prefix, out){
+  out = out||[]; prefix = prefix||'';
+  if(Array.isArray(obj)){ obj.forEach((v,i)=>flatten(v, prefix+'.'+i, out)); }
+  else if(obj && typeof obj==='object'){ Object.keys(obj).forEach(k=>flatten(obj[k], prefix?prefix+'.'+k:k, out)); }
+  else { out.push([prefix, obj]); }
+  return out;
+}
+function exportCsvData(){
+  const stamp = new Date().toISOString().slice(0,10);
+  const rows = [['Field','Value']].concat(flatten(E.normalizeState(state)).filter(([k])=>k!=='v'));
+  const csv = rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n';
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`retirement-plan-${stamp}.csv`;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},0);
+  setCsvStatus('Exported your plan as a CSV.');
+}
+function openCsvImport(){ document.getElementById('csvImportInput').click(); }
+function parseCsv(text){
+  const rows=[]; let row=[],cell='',q=false;
+  for(let i=0;i<text.length;i++){ const ch=text[i],nx=text[i+1];
+    if(q){ if(ch==='"'&&nx==='"'){cell+='"';i++;} else if(ch==='"'){q=false;} else cell+=ch; }
+    else if(ch==='"') q=true;
+    else if(ch===',') { row.push(cell); cell=''; }
+    else if(ch==='\n'||ch==='\r'){ if(ch==='\r'&&nx==='\n')i++; row.push(cell); if(row.some(v=>v.trim()!=='')) rows.push(row); row=[]; cell=''; }
+    else cell+=ch;
+  }
+  row.push(cell); if(row.some(v=>v.trim()!=='')) rows.push(row);
+  return rows;
+}
+async function handleCsvImport(files){
+  const before = JSON.parse(JSON.stringify(state));
+  try{
+    for(const file of files){
+      const rows = parseCsv(await file.text());
+      if(!rows.length) throw new Error(`${file.name}: empty file.`);
+      const header = rows[0].map(h=>h.trim().toLowerCase());
+      const fi = header.indexOf('field'), vi = header.indexOf('value');
+      if(fi<0 || vi<0) throw new Error(`${file.name}: expected Field and Value columns (use this tool's own export).`);
+      const draft = { v:1 };
+      // reset arrays we rebuild from indices
+      draft.income = []; draft.spending = { oneOffs: [] };
+      rows.slice(1).forEach(r=>{
+        const key = (r[fi]||'').trim(); if(!key) return;
+        let raw = (r[vi]||'').trim();
+        let val = raw==='true'?true : raw==='false'?false : (raw!=='' && !isNaN(Number(raw)) ? Number(raw) : raw);
+        setByPath(draft, key, val);
+      });
+      state = E.normalizeState(draft);
+    }
+    markUserChanged(); fullRender();
+    setCsvStatus('Imported plan from CSV.');
+  }catch(e){
+    state = E.normalizeState(before); fullRender();
+    setCsvStatus(`${e.message} No data was imported.`, true);
+  }
+}
+document.getElementById('csvImportInput').addEventListener('change',(e)=>{ const files=[...e.target.files]; e.target.value=''; handleCsvImport(files); });
+
+// ---- top-level actions ---------------------------------------------------
+function loadSampleData(){ markUserChanged(); state = E.normalizeState(E.sampleState()); fullRender(); setCsvStatus('Loaded sample data.'); }
+function clearForm(){ markUserChanged(); state = E.normalizeState(E.defaultState()); fullRender(); setCsvStatus('Reset to default assumptions.'); }
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+function loadStored(){
+  try{ const raw = localStorage.getItem(STORE_KEY); if(!raw) return false; const d = JSON.parse(raw); if(d && d.you){ state = E.normalizeState(d); return true; } }catch(e){}
+  return false;
+}
+function loadScenariosFromStore(){ try{ const raw=localStorage.getItem(SCENARIO_KEY); if(raw){ const d=JSON.parse(raw); scenarios={A:d.A||null,B:d.B||null}; } }catch(e){} }
+
+function fullRender(){
+  syncInputsFromState();
+  renderIncome();
+  renderOneOffs();
+  recompute();
+}
+
+async function init(){
+  bindStaticInputs();
+  if(!(await loadSharedDataFromHash())) loadStored();
+  loadScenariosFromStore();
+  fullRender();
+}
+init();
+</script>
+</body>
+</html>
