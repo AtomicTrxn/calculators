@@ -1,0 +1,20 @@
+{
+  "name": "@calculators/expense-tracker-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy --env production",
+    "test": "node --experimental-strip-types --test test/**/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "types": "wrangler types",
+    "d1:migrate:local": "wrangler d1 migrations apply expense_trackers_local --local",
+    "d1:migrate:prod": "wrangler d1 migrations apply expense_trackers_prod --env production --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260722.1",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.20.0"
+  }
+}

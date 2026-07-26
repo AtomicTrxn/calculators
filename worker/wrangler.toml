@@ -1,0 +1,76 @@
+name = "expense-tracker-api"
+main = "src/index.ts"
+compatibility_date = "2026-07-26"
+
+# Production URL: https://expense-tracker-api.tomhess.workers.dev
+# The `name` above is what determines that subdomain.
+
+[vars]
+APP_ENV = "local"
+# CORS allowlist, comma-separated. The browser sends only the origin, never the
+# path, so the GitHub Pages entry cannot be narrowed to /calculators/ — any
+# Pages site under that account can call this API. That is acceptable because
+# the share token is the real credential; CORS is not access control.
+ALLOWED_ORIGINS = "https://atomictrxn.github.io"
+# When "true", also allows http://localhost:* and the file:// "null" origin.
+# Never "true" in production: "null" is also what sandboxed iframes send.
+DEV_ORIGINS = "true"
+
+# Structured JSON logs. Never log share tokens or full cloud links — only
+# tracker ids, which are safe by design.
+[observability]
+enabled = true
+
+# Daily UTC housekeeping. Retention is enforced on write, so this job is only
+# a safety net: inactivity expiry, tombstone hard-delete, orphan sweep.
+[triggers]
+crons = ["17 3 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "expense_trackers_local"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Abuse dampening. RL_CREATE is keyed by IP for unauthenticated tracker
+# creation; RL_WRITE is keyed by tracker id for revision saves.
+[[unsafe.bindings]]
+name = "RL_CREATE"
+type = "ratelimit"
+namespace_id = "1101"
+simple = { limit = 10, period = 60 }
+
+[[unsafe.bindings]]
+name = "RL_WRITE"
+type = "ratelimit"
+namespace_id = "1102"
+simple = { limit = 30, period = 60 }
+
+[env.production]
+name = "expense-tracker-api"
+vars = { APP_ENV = "production", ALLOWED_ORIGINS = "https://atomictrxn.github.io", DEV_ORIGINS = "false" }
+
+[env.production.observability]
+enabled = true
+
+[env.production.triggers]
+crons = ["17 3 * * *"]
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "expense_trackers_prod"
+# Replace after: npx wrangler d1 create expense_trackers_prod
+database_id = "REPLACE_WITH_PROD_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[env.production.unsafe.bindings]]
+name = "RL_CREATE"
+type = "ratelimit"
+namespace_id = "3101"
+simple = { limit = 10, period = 60 }
+
+[[env.production.unsafe.bindings]]
+name = "RL_WRITE"
+type = "ratelimit"
+namespace_id = "3102"
+simple = { limit = 30, period = 60 }
