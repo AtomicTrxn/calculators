@@ -99,6 +99,19 @@
     <div class="toolbar-row">
       <button class="toolbtn" onclick="copyShareLink()">Copy shareable link</button>
     </div>
+    <div class="toolbar-row" id="cloudToolbarLocal">
+      <button class="toolbtn" onclick="shareLiveCloudTracker()">Share live cloud tracker</button>
+    </div>
+    <div class="toolbar-row" id="cloudToolbarCloud" style="display:none;">
+      <button class="toolbtn" onclick="saveCloudRevision()">Save cloud revision</button>
+      <button class="toolbtn secondary" onclick="toggleHistoryPanel()">History</button>
+      <button class="toolbtn secondary" onclick="copyCloudLink()">Copy cloud link</button>
+      <button class="toolbtn secondary" onclick="workLocally()">Work locally</button>
+      <button class="toolbtn danger" onclick="deleteCloudTracker()">Delete cloud tracker</button>
+    </div>
+    <div id="cloudStatus" class="toolstatus" aria-live="polite">Storage: Local only</div>
+    <div id="cloudExpiryWarning" class="toolstatus" style="display:none;color:var(--coral);"></div>
+    <div id="cloudHistoryPanel" class="toolstatus" style="display:none;"></div>
     <div class="toolbar-row">
       <button class="toolbtn" onclick="openCsvImport()">Import CSV data</button>
       <button class="toolbtn" onclick="exportCsvData()">Export CSV data</button>
@@ -191,6 +204,7 @@
   <footer>Edit any field and the tracker recalculates automatically.</footer>
 </div>
 
+<script src="cloud-client.js"></script>
 <script>
 let expenseData = [
   {name:"", cost:0, start:"2026-01-01", end:"2026-01-02", paidBy:""}
@@ -276,7 +290,12 @@ function applyState(d){
   splitMethod = d.splitMethod === 'person' ? 'person' : 'group';
   return true;
 }
-function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(currentState())); }catch(e){} }
+function save(){
+  try{
+    if(cloudSession){ CloudClient.saveDraft(localStorage, cloudSession.trackerId, compactState()); }
+    else{ localStorage.setItem(STORE_KEY, JSON.stringify(currentState())); }
+  }catch(e){}
+}
 function loadStored(){
   try{
     const raw = localStorage.getItem(STORE_KEY);
@@ -339,7 +358,14 @@ function clearShareHash(){
   url.hash = '';
   window.history.replaceState(null, '', url);
 }
-function markUserChanged(){ clearShareHash(); }
+function markUserChanged(){
+  clearShareHash();
+  if(cloudSession && !cloudSession.hasUnsavedCloudChanges){
+    cloudSession.hasUnsavedCloudChanges = true;
+    persistCloudSession();
+  }
+  updateCloudUI();
+}
 async function loadSharedDataFromHash(){
   const encoded = shareDataFromHash();
   if(!encoded) return false;
@@ -384,6 +410,378 @@ async function copyShareLink(){
     setCsvStatus('Could not copy automatically. Use the updated URL in the address bar.', true);
     window.location.hash = url.hash;
   }
+}
+
+// ---- Cloud tracker mode -----------------------------------------------
+// cloudSession holds the fields the plan's Tracker Page State spec calls out,
+// persisted via CloudClient.saveSession(). cloudMeta/cloudConflict/cloudHistory
+// are refreshed from server responses and never persisted directly.
+let cloudSession = null;
+let cloudMeta = null;      // {expiresAt, expiryWarningDays, revisionWindow}
+let cloudConflict = null;  // {revisionNumber, savedBy} while a 409 is unresolved
+let cloudHistory = null;   // last listRevisions() response
+let cloudHistoryOpen = false;
+let cloudBusy = false;
+
+function persistCloudSession(){ try{ CloudClient.saveSession(localStorage, cloudSession); }catch(e){} }
+
+function cloudErrorMessage(err){
+  if(err && err.code === 'network_error') return 'Could not reach the cloud service right now. Your data is safe in this browser — try again later.';
+  if(err instanceof CloudClient.CloudApiError) return err.message || 'The cloud service returned an error.';
+  return (err && err.message) ? err.message : 'Something went wrong talking to the cloud service.';
+}
+
+function clearCloudHashFromUrl(){
+  if(!CloudClient.parseCloudHash(window.location.hash)) return;
+  const url = new URL(window.location.href);
+  url.hash = '';
+  window.history.replaceState(null, '', url);
+}
+
+function applyCloudSessionFromServer(resp, extra){
+  cloudSession = {
+    trackerId: resp.trackerId,
+    token: extra.token,
+    title: resp.title || '',
+    savedBy: extra.savedBy || '',
+    currentRevisionNumber: resp.revisionNumber,
+    latestSavedAt: resp.savedAt,
+    latestSavedBy: resp.savedBy,
+    hasUnsavedCloudChanges: false
+  };
+  cloudMeta = {
+    expiresAt: resp.expiresAt,
+    expiryWarningDays: resp.expiryWarningDays,
+    revisionWindow: resp.revisionWindow
+  };
+}
+
+function promptForSavedBy(){
+  return ((window.prompt("Your name, shown in the shared tracker's revision history:", '') || '')).trim();
+}
+
+function ensureSavedBy(){
+  if(cloudSession && cloudSession.savedBy) return cloudSession.savedBy;
+  const name = promptForSavedBy();
+  if(name && cloudSession){ cloudSession.savedBy = name; persistCloudSession(); }
+  return name;
+}
+
+/**
+ * Fetch the latest revision for a tracker, reconcile against any pending
+ * local draft, and apply the resulting data to the page. Shared by both the
+ * #cloud= link flow and reconnecting a persisted session on plain reload.
+ * Never silently discards a draft: if it differs from the server payload the
+ * user is asked to restore it or discard it.
+ */
+async function connectCloudSession(trackerId, token, knownSavedBy){
+  const resp = await CloudClient.fetchLatest({trackerId, token});
+  const draft = CloudClient.loadDraft(localStorage, trackerId);
+  applyCloudSessionFromServer(resp, {token, savedBy: knownSavedBy || ''});
+  const cloudPayloadStr = JSON.stringify(resp.payload);
+  let restoredDraft = false;
+  if(draft && JSON.stringify(draft) !== cloudPayloadStr){
+    restoredDraft = window.confirm(
+      'This cloud tracker has unsaved local changes from a previous visit that were never saved.\n\n' +
+      'Choose OK to restore your local changes (you can review and save them), or Cancel to discard them and use the latest saved revision.'
+    );
+  }
+  if(restoredDraft){
+    applyState(draft);
+    cloudSession.hasUnsavedCloudChanges = true;
+  } else {
+    applyState(resp.payload);
+    if(draft) CloudClient.clearDraft(localStorage, trackerId);
+  }
+  persistCloudSession();
+  return resp;
+}
+
+async function loadCloudFromHash(parsed){
+  try{
+    const resp = await connectCloudSession(parsed.trackerId, parsed.token, '');
+    setCsvStatus(cloudSession.hasUnsavedCloudChanges
+      ? 'Restored your unsaved local changes for this cloud tracker.'
+      : `Loaded cloud tracker · revision ${resp.revisionNumber}.`);
+    return true;
+  }catch(err){
+    setCsvStatus(cloudErrorMessage(err), true);
+    return false;
+  }
+}
+
+async function reconnectCloudSession(existingSession){
+  try{
+    await connectCloudSession(existingSession.trackerId, existingSession.token, existingSession.savedBy || '');
+    return true;
+  }catch(err){
+    // A failed reconnect must never leave unsaved cloud work invisible. The
+    // draft still exists in localStorage, but falling through to loadStored()
+    // would show the unrelated local-only tracker instead, and the user would
+    // have no way to tell their edits survived.
+    const draft = CloudClient.loadDraft(localStorage, existingSession.trackerId);
+    const gone = err instanceof CloudClient.CloudApiError && (err.status === 401 || err.status === 410);
+
+    if(gone){
+      // The tracker is deleted or the link was revoked, so the session is dead
+      // either way. Surface the draft rather than dropping it silently — it is
+      // the only remaining copy of that work.
+      CloudClient.clearSession(localStorage);
+      if(draft && applyState(draft)){
+        CloudClient.clearDraft(localStorage, existingSession.trackerId);
+        setCsvStatus('That shared tracker is no longer available, but your unsaved changes are shown here. Export CSV or copy a shareable link to keep them.', true);
+        return true;
+      }
+      setCsvStatus('Your saved cloud tracker link is no longer valid, so this page is showing local data instead.', true);
+      return false;
+    }
+
+    // Unreachable service (offline, or the Worker not deployed yet). Keep the
+    // session so edits continue autosaving to the draft and Save works once
+    // the network returns.
+    if(draft && applyState(draft)){
+      cloudSession = Object.assign({}, existingSession, {hasUnsavedCloudChanges: true});
+      cloudMeta = null;
+      setCsvStatus('Could not reach the cloud service. Showing your unsaved changes for this tracker — save again once you are back online.', true);
+      return true;
+    }
+    setCsvStatus('Could not reach the cloud service to load your shared tracker. Showing local data for now.', true);
+    return false;
+  }
+}
+
+/** A 410 mid-session (deleted/expired while open) disconnects but keeps the visible data. */
+function handleCloudGone(err){
+  setCsvStatus((err && err.message) || 'This shared tracker is no longer available.', true);
+  CloudClient.clearSession(localStorage);
+  cloudSession = null;
+  cloudMeta = null;
+  cloudConflict = null;
+  cloudHistory = null;
+  cloudHistoryOpen = false;
+  updateCloudUI();
+}
+
+async function shareLiveCloudTracker(){
+  if(cloudBusy) return;
+  const savedBy = promptForSavedBy();
+  if(!savedBy){ setCsvStatus('Enter a name to create a shared cloud tracker.', true); return; }
+  const title = ((window.prompt('Optional tracker name (e.g. "Cabin trip 2026"):', '') || '')).trim();
+  cloudBusy = true;
+  try{
+    const resp = await CloudClient.createTracker({payload: compactState(), savedBy, title: title || undefined});
+    applyCloudSessionFromServer(resp, {token: resp.token, savedBy});
+    CloudClient.clearDraft(localStorage, resp.trackerId);
+    persistCloudSession();
+    updateCloudUI();
+    await copyCloudLink(true);
+    setCsvStatus('Created a shared cloud tracker and copied the link. Anyone with it can view and edit it.');
+  }catch(err){
+    setCsvStatus(cloudErrorMessage(err), true);
+  }finally{
+    cloudBusy = false;
+    updateCloudUI();
+  }
+}
+
+async function copyCloudLink(silent){
+  if(!cloudSession) return;
+  const url = new URL(window.location.href);
+  url.hash = CloudClient.buildCloudHash(cloudSession.trackerId, cloudSession.token);
+  try{
+    await copyText(url.toString());
+    window.history.replaceState(null, '', url);
+    if(!silent) setCsvStatus('Copied cloud link. Anyone with it can view and edit this tracker.');
+  }catch(e){
+    if(!silent) setCsvStatus('Could not copy automatically. Use the updated URL in the address bar.', true);
+    window.location.hash = url.hash;
+  }
+}
+
+async function saveCloudRevision(force){
+  if(!cloudSession || cloudBusy) return;
+  const savedBy = ensureSavedBy();
+  if(!savedBy){ setCsvStatus('Enter a name to save a cloud revision.', true); return; }
+  cloudBusy = true;
+  try{
+    const resp = await CloudClient.saveRevision({
+      trackerId: cloudSession.trackerId,
+      token: cloudSession.token,
+      payload: compactState(),
+      savedBy,
+      parentRevisionNumber: cloudSession.currentRevisionNumber,
+      force: !!force
+    });
+    cloudConflict = null;
+    cloudSession.currentRevisionNumber = resp.revisionNumber;
+    cloudSession.latestSavedAt = resp.savedAt;
+    cloudSession.latestSavedBy = resp.savedBy;
+    cloudSession.hasUnsavedCloudChanges = false;
+    cloudMeta = {expiresAt: resp.expiresAt, expiryWarningDays: resp.expiryWarningDays, revisionWindow: resp.revisionWindow};
+    persistCloudSession();
+    CloudClient.clearDraft(localStorage, cloudSession.trackerId);
+    cloudHistory = null; // stale after a save; refetched next time the panel opens
+    if(cloudHistoryOpen) await refreshCloudHistory();
+    setCsvStatus(resp.deduped ? 'No changes to save — the cloud tracker is already up to date.' : `Saved cloud revision ${resp.revisionNumber}.`);
+  }catch(err){
+    if(err instanceof CloudClient.CloudApiError && err.status === 409){
+      cloudConflict = {
+        revisionNumber: err.current && err.current.revisionNumber,
+        savedBy: err.current && err.current.savedBy
+      };
+      setCsvStatus('Someone else saved a newer revision. Load the latest, or save your changes as a new revision anyway.', true);
+    } else if(err instanceof CloudClient.CloudApiError && err.status === 410){
+      handleCloudGone(err);
+    } else {
+      setCsvStatus(cloudErrorMessage(err), true);
+    }
+  }finally{
+    cloudBusy = false;
+    updateCloudUI();
+  }
+}
+
+async function loadLatestCloud(){
+  if(!cloudSession || cloudBusy) return;
+  cloudBusy = true;
+  try{
+    const resp = await CloudClient.fetchLatest({trackerId: cloudSession.trackerId, token: cloudSession.token});
+    applyCloudSessionFromServer(resp, {token: cloudSession.token, savedBy: cloudSession.savedBy});
+    applyState(resp.payload);
+    cloudConflict = null;
+    CloudClient.clearDraft(localStorage, cloudSession.trackerId);
+    persistCloudSession();
+    renderAll();
+    setCsvStatus(`Loaded the latest cloud revision (${resp.revisionNumber}).`);
+  }catch(err){
+    if(err instanceof CloudClient.CloudApiError && err.status === 410){ handleCloudGone(err); }
+    else setCsvStatus(cloudErrorMessage(err), true);
+  }finally{
+    cloudBusy = false;
+    updateCloudUI();
+  }
+}
+
+function workLocally(){
+  if(!cloudSession) return;
+  if(!window.confirm('Stop syncing with the shared cloud tracker? Your current data stays in this browser. The cloud tracker itself is not deleted — anyone else with the link can still open and edit it.')) return;
+  CloudClient.clearSession(localStorage);
+  cloudSession = null;
+  cloudMeta = null;
+  cloudConflict = null;
+  cloudHistory = null;
+  cloudHistoryOpen = false;
+  clearCloudHashFromUrl();
+  save();
+  updateCloudUI();
+  setCsvStatus('Disconnected from the cloud tracker. Your current data is now stored locally in this browser only.');
+}
+
+async function deleteCloudTracker(){
+  if(!cloudSession || cloudBusy) return;
+  const label = cloudSession.title ? `"${cloudSession.title}"` : 'this cloud tracker';
+  if(!window.confirm(`Delete ${label} for everyone with the link? This can be recovered by the site operator for a limited time, but not by you from this page — treat it as gone.`)) return;
+  cloudBusy = true;
+  try{
+    await CloudClient.deleteTracker({trackerId: cloudSession.trackerId, token: cloudSession.token});
+    CloudClient.clearSession(localStorage);
+    CloudClient.clearDraft(localStorage, cloudSession.trackerId);
+    clearCloudHashFromUrl();
+    cloudSession = null;
+    cloudMeta = null;
+    cloudConflict = null;
+    cloudHistory = null;
+    cloudHistoryOpen = false;
+    setCsvStatus('Deleted the cloud tracker. Your current data remains in this browser only.');
+  }catch(err){
+    setCsvStatus(cloudErrorMessage(err), true);
+  }finally{
+    cloudBusy = false;
+    updateCloudUI();
+  }
+}
+
+async function toggleHistoryPanel(){
+  if(!cloudSession) return;
+  cloudHistoryOpen = !cloudHistoryOpen;
+  if(cloudHistoryOpen) await refreshCloudHistory();
+  else updateCloudUI();
+}
+
+async function refreshCloudHistory(){
+  if(!cloudSession || cloudBusy) return;
+  cloudBusy = true;
+  try{
+    cloudHistory = await CloudClient.listRevisions({trackerId: cloudSession.trackerId, token: cloudSession.token});
+  }catch(err){
+    if(err instanceof CloudClient.CloudApiError && err.status === 410){ handleCloudGone(err); return; }
+    setCsvStatus(cloudErrorMessage(err), true);
+  }finally{
+    cloudBusy = false;
+    updateCloudUI();
+  }
+}
+
+function fmtCloudDate(sec){
+  if(!Number.isFinite(sec)) return '—';
+  return new Date(sec*1000).toLocaleString(undefined, {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+}
+function fmtCloudDay(sec){
+  if(!Number.isFinite(sec)) return '—';
+  return new Date(sec*1000).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+}
+
+function cloudStatusHtml(){
+  if(!cloudSession) return 'Storage: Local only';
+  if(cloudConflict){
+    return `Storage: Cloud tracker · newer revision exists (${esc(String(cloudConflict.revisionNumber ?? '?'))} by ${esc(cloudConflict.savedBy || 'someone')})`
+      + `<div style="margin-top:6px;"><button class="toolbtn secondary" style="padding:5px 10px;font-size:12px;" onclick="loadLatestCloud()">Load latest</button> `
+      + `<button class="toolbtn secondary" style="padding:5px 10px;font-size:12px;" onclick="saveCloudRevision(true)">Save as new revision anyway</button></div>`;
+  }
+  if(cloudSession.hasUnsavedCloudChanges){
+    return 'Storage: Cloud tracker · unsaved changes';
+  }
+  const shortId = esc((cloudSession.trackerId || '').slice(0, 8));
+  return `Storage: Cloud tracker ${shortId}… · revision ${esc(String(cloudSession.currentRevisionNumber))} saved ${esc(fmtCloudDate(cloudSession.latestSavedAt))} by ${esc(cloudSession.latestSavedBy || 'someone')}`;
+}
+
+function renderCloudExpiryWarning(){
+  const el = document.getElementById('cloudExpiryWarning');
+  if(!el) return;
+  if(!cloudSession || !cloudMeta || cloudMeta.expiresAt == null){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  const info = CloudClient.expiryInfo(cloudMeta.expiresAt, cloudMeta.expiryWarningDays, Math.floor(Date.now()/1000));
+  if(!info || !info.shouldWarn){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'block';
+  el.innerHTML = `⚠ This shared tracker expires in ${esc(String(info.daysLeft))} day${info.daysLeft===1?'':'s'} (${esc(fmtCloudDay(info.expiresAt))}) unless someone saves.<br>`
+    + 'Saving anything — even an unchanged tracker — resets the clock for another year.';
+}
+
+function renderCloudHistoryPanel(){
+  const el = document.getElementById('cloudHistoryPanel');
+  if(!el) return;
+  if(!cloudSession || !cloudHistoryOpen){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'block';
+  if(!cloudHistory){ el.innerHTML = '<p class="hint" style="margin:10px 0;">Loading history…</p>'; return; }
+  const windowSize = cloudHistory.revisionWindow || 5;
+  const revisions = cloudHistory.revisions || [];
+  const items = revisions.map(r=>
+    `<li>${r.isCurrent ? '<b>Current · </b>' : ''}Revision ${esc(String(r.revisionNumber))} · ${esc(fmtCloudDate(r.savedAt))} by ${esc(r.savedBy || 'someone')}</li>`
+  ).join('');
+  el.innerHTML = `<p class="hint" style="margin:10px 0 4px;">Showing the last ${esc(String(windowSize))} saves. Older revisions are removed automatically.</p>`
+    + `<ul style="margin:0 0 4px;padding-left:18px;line-height:1.7;font-size:12.5px;color:var(--muted);">${items || '<li>No history yet.</li>'}</ul>`;
+}
+
+function updateCloudUI(){
+  const localRow = document.getElementById('cloudToolbarLocal');
+  const cloudRow = document.getElementById('cloudToolbarCloud');
+  if(localRow) localRow.style.display = cloudSession ? 'none' : '';
+  if(cloudRow) cloudRow.style.display = cloudSession ? '' : 'none';
+
+  const statusEl = document.getElementById('cloudStatus');
+  if(statusEl) statusEl.innerHTML = cloudStatusHtml();
+
+  renderCloudExpiryWarning();
+  renderCloudHistoryPanel();
 }
 
 function setCsvStatus(msg, isError=false){
@@ -958,9 +1356,24 @@ function recalc(){
 }
 
 async function init(){
-  if(!(await loadSharedDataFromHash())) loadStored();
+  if(await loadSharedDataFromHash()){
+    // #data= snapshot link — existing behavior, unchanged, no cloud connection.
+  } else {
+    const cloudParsed = CloudClient.parseCloudHash(window.location.hash);
+    if(cloudParsed){
+      if(!(await loadCloudFromHash(cloudParsed))) loadStored();
+    } else {
+      const existingSession = CloudClient.loadSession(localStorage);
+      if(existingSession && existingSession.trackerId && existingSession.token){
+        if(!(await reconnectCloudSession(existingSession))) loadStored();
+      } else {
+        loadStored();
+      }
+    }
+  }
   setMethodButtons();
   renderAll();
+  updateCloudUI();
 }
 init();
 </script>
