@@ -17,5 +17,19 @@ Run these before committing page changes:
 
 ```sh
 node scripts/check-links.js
+node scripts/check-handlers.js
 node scripts/retirement-tests.js
+node scripts/cloud-client-tests.js
+```
+
+`check-handlers.js` verifies that every inline `onclick`-style handler resolves
+to a function that actually exists — with no build step, a mistyped handler
+otherwise fails silently at runtime.
+
+The optional cloud backend for the expense tracker lives in `worker/` (see
+`worker/README.md` and `docs/cloud-tracker-plan.md`). Its suite needs no
+install:
+
+```sh
+cd worker && npm test
 ```
