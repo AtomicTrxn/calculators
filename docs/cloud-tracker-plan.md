@@ -445,7 +445,7 @@ Add a `cloudSession` object:
 
 ## Implementation Phases
 
-### Phase 1: Backend — **done, not deployed**
+### Phase 1: Backend — **done and deployed**
 
 - `worker/` with `wrangler.toml` and the D1 migration.
 - UUIDv4 tracker IDs, token generation, SHA-256 hashing, constant-time verification.
@@ -454,7 +454,9 @@ Add a `cloudSession` object:
 - Retention constants in a single module (`src/constants.ts`).
 - 33 tests passing; `tsc --noEmit` clean.
 
-Not yet done: `wrangler login`, creating `expense_trackers_prod`, filling in its `database_id`, and deploying. See `worker/README.md`.
+Deployed to `https://expense-tracker-api.tomhess.workers.dev` against the `expense_trackers_prod` D1 database, cron on `17 3 * * *`.
+
+Verified against the live Worker and real D1, which closes the gap the `node:sqlite` shim could not cover: **four genuinely simultaneous saves sharing a parent produced exactly one winner, three `409`s, and no orphan rows**, with the window still holding at 5. The forged-parent case was re-checked live too — a `parentRevisionNumber` of 99999 is rejected without widening the prune. Also confirmed on the real runtime: identical `401`s for bad-token and unknown-tracker, dedupe consuming no slot while still bumping the expiry clock, `413` on an oversized payload, and CORS refusing both a foreign origin and the `null` (file://) origin in production.
 
 ### Phase 2: Tracker Integration — **done**
 

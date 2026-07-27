@@ -59,8 +59,7 @@ crons = ["17 3 * * *"]
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "expense_trackers_prod"
-# Replace after: npx wrangler d1 create expense_trackers_prod
-database_id = "REPLACE_WITH_PROD_DATABASE_ID"
+database_id = "5e6c202c-59f0-4092-a470-7d1b34240117"
 migrations_dir = "migrations"
 
 [[env.production.unsafe.bindings]]

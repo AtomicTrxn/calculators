@@ -33,29 +33,24 @@ npm run d1:migrate:local
 npm run dev
 ```
 
-## Deploying (not yet done)
+## Deployed
 
-The Worker has never been deployed and the production database does not exist
-yet. Three things must happen first, in order:
+Live at `https://expense-tracker-api.tomhess.workers.dev`, backed by the
+`expense_trackers_prod` D1 database, with the cleanup cron on `17 3 * * *`.
 
-```sh
-npx wrangler login
-```
+Redeploy after changing `src/`:
 
 ```sh
-npx wrangler d1 create expense_trackers_prod
+npm run deploy
 ```
 
-Paste the printed `database_id` over `REPLACE_WITH_PROD_DATABASE_ID` in
-`wrangler.toml`, then:
+Apply a new migration to production before deploying code that needs it:
 
 ```sh
 npm run d1:migrate:prod
 ```
 
-```sh
-npm run deploy
-```
+Both require `npx wrangler login` in an interactive terminal first.
 
 ## API
 
