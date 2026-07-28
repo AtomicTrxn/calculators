@@ -471,6 +471,70 @@ describe('nightly cleanup', () => {
   });
 });
 
+describe('cleanup heartbeat', () => {
+  it('reports stale before the job has ever run', async () => {
+    const app = await createApp();
+    const health = await app.fetchJson('/health/retention');
+    assert.equal(health.lastCleanupAt, null);
+    assert.equal(health.ageSeconds, null);
+    // A worker that has never swept is exactly the condition to alert on.
+    assert.equal(health.stale, true);
+  });
+
+  it('records a heartbeat and the run summary after a sweep', async () => {
+    const app = await createApp();
+    const created = await app.createTracker();
+    await app.fetchJson(`/trackers/${created.trackerId}`, {
+      method: 'DELETE',
+      token: created.token,
+    });
+    app.ageTombstone(created.trackerId, 91);
+
+    await app.runScheduled();
+
+    const health = await app.fetchJson('/health/retention');
+    assert.ok(Number.isFinite(health.lastCleanupAt));
+    assert.equal(health.stale, false);
+    assert.ok(health.ageSeconds >= 0 && health.ageSeconds < 60);
+    assert.equal(health.lastReport.trackersPurged, 1);
+    assert.equal(health.lastReport.revisionsPurged, 1);
+  });
+
+  it('goes stale once two daily runs have been missed', async () => {
+    const app = await createApp();
+    await app.runScheduled();
+    assert.equal((await app.fetchJson('/health/retention')).stale, false);
+
+    // Rewind the heartbeat past the two-day threshold.
+    app.db
+      .prepare("update ops_meta set value = ? where key = 'last_cleanup_at'")
+      .run(String(Math.floor(Date.now() / 1000) - 3 * 86400));
+
+    const health = await app.fetchJson('/health/retention');
+    assert.equal(health.stale, true);
+    assert.ok(health.ageSeconds > 2 * 86400);
+  });
+
+  it('needs no token', async () => {
+    const app = await createApp();
+    const res = await app.fetchRaw('/health/retention');
+    assert.equal(res.status, 200);
+  });
+
+  it('survives a corrupt stored report', async () => {
+    const app = await createApp();
+    await app.runScheduled();
+    app.db
+      .prepare("update ops_meta set value = 'not json' where key = 'last_cleanup_report'")
+      .run();
+
+    const health = await app.fetchJson('/health/retention');
+    // The timestamp is what a monitor alerts on; it must survive.
+    assert.ok(Number.isFinite(health.lastCleanupAt));
+    assert.equal(health.lastReport, null);
+  });
+});
+
 describe('CORS', () => {
   it('echoes the allowed origin and caches the preflight', async () => {
     const app = await createApp();

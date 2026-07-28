@@ -12,7 +12,7 @@ import {
   problem,
   resolveOrigin,
 } from "./http.ts";
-import { runCleanup } from "./retention.ts";
+import { cleanupHealth, recordCleanupHeartbeat, runCleanup } from "./retention.ts";
 import {
   ConflictError,
   createTracker,
@@ -44,6 +44,13 @@ export default {
     try {
       const url = new URL(request.url);
       const route = `${request.method} ${url.pathname}`;
+
+      // Liveness for the nightly job. Public and unauthenticated so an
+      // external monitor can poll it; exposes only timestamps and counts,
+      // never tracker data.
+      if (route === "GET /health/retention") {
+        return json(await cleanupHealth(env), requestId, origin);
+      }
 
       if (route === "POST /trackers") {
         await enforceRateLimit(env.RL_CREATE, clientIp(request));
@@ -107,6 +114,9 @@ export default {
     _ctx: ExecutionContext,
   ): Promise<void> {
     const report = await runCleanup(env);
+    // Written only after a successful sweep, so the heartbeat means "the job
+    // completed", not merely "the job started".
+    await recordCleanupHeartbeat(env, report);
     console.log(JSON.stringify({ job: "cleanup", ...report }));
   },
 };

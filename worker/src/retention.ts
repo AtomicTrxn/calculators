@@ -12,15 +12,79 @@
 // does not count against that, but every statement is still indexed and
 // LIMITed so a backlog is worked through across runs instead of in one.
 
-import { CLEANUP_BATCH_LIMIT, INACTIVITY_EXPIRY_DAYS, TOMBSTONE_GRACE_DAYS } from "./constants.ts";
+import {
+  CLEANUP_BATCH_LIMIT,
+  DAY_SECONDS,
+  INACTIVITY_EXPIRY_DAYS,
+  TOMBSTONE_GRACE_DAYS,
+} from "./constants.ts";
 import type { Env } from "./types.ts";
 import { addDaysSeconds, nowSeconds } from "./util.ts";
 
+// The index signature keeps this assignable to JsonValue, since the report is
+// serialized both into ops_meta and out of /health/retention.
 export interface CleanupReport {
+  [key: string]: number;
   expired: number;
   revisionsPurged: number;
   trackersPurged: number;
   orphansRemoved: number;
+}
+
+/**
+ * Heartbeat for the nightly job.
+ *
+ * A cron that stops firing has no visible symptom: nothing errors, and the
+ * only consequence is tombstones quietly accumulating. Recording the last
+ * successful run makes that failure detectable from outside.
+ */
+export const CLEANUP_HEARTBEAT_KEY = "last_cleanup_at";
+export const CLEANUP_LAST_REPORT_KEY = "last_cleanup_report";
+
+export async function recordCleanupHeartbeat(
+  env: Env,
+  report: CleanupReport,
+  at: number = nowSeconds(),
+): Promise<void> {
+  await env.DB.batch([
+    env.DB.prepare(
+      `insert into ops_meta (key, value) values (?, ?)
+       on conflict(key) do update set value = excluded.value`,
+    ).bind(CLEANUP_HEARTBEAT_KEY, String(at)),
+    env.DB.prepare(
+      `insert into ops_meta (key, value) values (?, ?)
+       on conflict(key) do update set value = excluded.value`,
+    ).bind(CLEANUP_LAST_REPORT_KEY, JSON.stringify(report)),
+  ]);
+}
+
+export async function cleanupHealth(env: Env, at: number = nowSeconds()) {
+  const rows = await env.DB.prepare(
+    "select key, value from ops_meta where key in (?, ?)",
+  )
+    .bind(CLEANUP_HEARTBEAT_KEY, CLEANUP_LAST_REPORT_KEY)
+    .all<{ key: string; value: string }>();
+
+  const map = new Map((rows.results ?? []).map((r) => [r.key, r.value]));
+  const raw = map.get(CLEANUP_HEARTBEAT_KEY);
+  const lastCleanupAt = raw == null ? null : Number(raw);
+
+  let lastReport: CleanupReport | null = null;
+  try {
+    const encoded = map.get(CLEANUP_LAST_REPORT_KEY);
+    if (encoded) lastReport = JSON.parse(encoded) as CleanupReport;
+  } catch {
+    // A corrupt report must not take the health check down; the timestamp is
+    // the part a monitor actually alerts on.
+  }
+
+  return {
+    lastCleanupAt,
+    ageSeconds: lastCleanupAt == null ? null : at - lastCleanupAt,
+    // The job runs daily; two missed runs is unambiguous rather than a blip.
+    stale: lastCleanupAt == null || at - lastCleanupAt > 2 * DAY_SECONDS,
+    lastReport,
+  };
 }
 
 export async function runCleanup(env: Env, at: number = nowSeconds()): Promise<CleanupReport> {
