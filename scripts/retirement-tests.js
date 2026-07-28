@@ -299,6 +299,26 @@ test('early losses hurt more than late losses once withdrawing', () => {
   assert(badLate > badEarly, 'a late crash leaves more than an early crash when withdrawing');
 });
 
+test('guardrails cuts spending the year after a market loss (prevReturn wiring)', () => {
+  const base = E.defaultState();
+  base.you = { currentAge: 65, retireAge: 65, endAge: 85 };
+  base.accounts = { taxable: 0, traditional: 0, roth: 800000, cash: 0, hsa: 0 };
+  base.income.forEach(i => i.amount = 0);
+  base.spending.baseline = 45000;
+  base.spending.phased.enabled = false;
+  base.assumptions.inflation = 0.02;
+  base.assumptions.taxRate = 0;
+  base.strategy.withdrawalMethod = 'guardrails';
+  const years = base.you.endAge - base.you.currentAge + 1;
+  const good = new Array(years).fill(0.05);
+  const loss = good.slice(); loss[1] = -0.35; // big drop in the 2nd retirement year (t=1)
+  const sGood = E.projectWithReturns(base, good);
+  const sLoss = E.projectWithReturns(base, loss);
+  // year t=2 is the first year that can see the t=1 loss as "last year"; guardrails should hold back.
+  assert(sLoss.rows[2].spending < sGood.rows[2].spending - 1,
+    `guardrails should spend less after a loss year (loss ${sLoss.rows[2].spending.toFixed(0)} vs good ${sGood.rows[2].spending.toFixed(0)})`);
+});
+
 // ---- Monte Carlo ----
 
 test('Monte Carlo is deterministic for a fixed seed', () => {

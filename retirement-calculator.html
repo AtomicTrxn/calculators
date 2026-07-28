@@ -46,6 +46,9 @@
   .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 18px;}
   .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px 18px;}
   input[type=text], input[type=number], input[type=date], select{width:100%;border:1px solid var(--line);background:#fff;border-radius:3px;padding:7px 8px;font-size:13.5px;color:var(--ink);font-family:inherit;}
+  /* hide native number spinners so the $ / % suffixes never collide with them */
+  input[type=number]{-moz-appearance:textfield;appearance:textfield;}
+  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   input.invalid{border-color:var(--coral) !important;background:#fbe9eb;}
   .inline-suffix{position:relative;}
   .inline-suffix input{padding-right:26px;}
@@ -172,6 +175,7 @@
       <div class="metric"><div class="k">Good case (90th pct)</div><div class="val small" id="mHigh">—</div></div>
       <div class="metric"><div class="k">Steady-return outcome</div><div class="val small" id="mDet">—</div></div>
     </div>
+    <div id="basisNote" style="font-size:11.5px;color:#aeb9cc;margin-top:12px;"></div>
     <div class="calc-flag" id="calcFlag"></div>
   </div>
 
@@ -413,6 +417,14 @@ function fmt(n){
   return (neg?'-$':'$') + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 function fmtPct(x){ return (x*100).toFixed(x>=0.1?0:1) + '%'; }
+function fmtCompact(n){
+  if(!Number.isFinite(n)) return '—';
+  const neg = n<0, a = Math.abs(n); const p = neg?'-$':'$';
+  if(a>=1e9) return p+(a/1e9).toFixed(1).replace(/\.0$/,'')+'B';
+  if(a>=1e6) return p+(a/1e6).toFixed(1).replace(/\.0$/,'')+'M';
+  if(a>=1e3) return p+Math.round(a/1e3)+'K';
+  return p+Math.round(a);
+}
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function realFactor(t){ return displayReal ? Math.pow(1+state.assumptions.inflation, t) : 1; }
 
@@ -520,7 +532,7 @@ function removeOneOff(i){ markUserChanged(); state.spending.oneOffs.splice(i,1);
 // ---- method toggle -------------------------------------------------------
 const METHOD_HINTS = {
   fixedReal: 'Spend your planned budget every year, rising only with inflation. The most common assumption.',
-  fourPercent: 'Withdraw 4% of your portfolio value at retirement, then adjust that dollar amount for inflation — ignores your entered baseline in favor of the classic rule.',
+  fourPercent: 'Sets your target spending to 4% of your portfolio at retirement (then inflation-adjusted), replacing the budget you entered. Guaranteed income still offsets what you actually withdraw.',
   guardrails: 'Start from your budget but cut spending after a bad year when your withdrawal rate runs high, and raise it when the portfolio is flush (a simplified Guyton-Klinger).'
 };
 function setMethodButtons(){
@@ -534,7 +546,7 @@ document.getElementById('methodToggle').addEventListener('click',(e)=>{
 });
 document.getElementById('realToggle').addEventListener('change',(e)=>{
   displayReal = e.target.checked;
-  if(lastResult) renderYearTable(lastResult.det);
+  if(lastResult){ renderResults(lastResult.det, lastResult.mc); renderYearTable(lastResult.det); }
 });
 
 // ---- recompute -----------------------------------------------------------
@@ -588,6 +600,9 @@ function renderResults(det, mc){
   document.getElementById('mDet').textContent = det.depletionAge
     ? `Runs out at ${det.depletionAge}`
     : fmt(det.endBalance/rf);
+  document.getElementById('basisNote').textContent = displayReal
+    ? "Figures shown in today's dollars (inflation-adjusted), matching the year-by-year toggle below."
+    : "Figures shown in future dollars for each date. Toggle “today’s dollars” in the year-by-year card to see them inflation-adjusted.";
 }
 
 function renderFanChart(mc){
@@ -610,7 +625,7 @@ function renderFanChart(mc){
   for(let g=0; g<=ticks; g++){
     const val = maxV*g/ticks; const yy=y(val);
     grid += `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`;
-    grid += `<text x="${padL-8}" y="${(yy+4).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(val).replace(/,000$/,'k').replace(/,\d{3}k/,m=>m)}</text>`;
+    grid += `<text x="${padL-8}" y="${(yy+4).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">${fmtCompact(val)}</text>`;
   }
   // x labels (age) ~ every N
   let xlabels=''; const step = Math.ceil(bands.length/8);

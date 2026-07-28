@@ -340,6 +340,7 @@
     let fourPctBase = null;
     let guardW = null; // current nominal guardrails withdrawal
     let guardInitRate = null;
+    let prevReturn = null; // last year's realized return (for the guardrails rule)
     const tRet = Math.max(0, S.you.retireAge - S.you.currentAge);
     const infl = S.assumptions.inflation;
     const cg = S.assumptions.contributionGrowth;
@@ -377,8 +378,8 @@
           } else {
             let tentative = guardW;
             const rate = portfolio > 0 ? guardW / portfolio : 0;
-            // capital-preservation: skip the inflation raise after a down year if overspending
-            if (!(lastReturn < 0 && rate > guardInitRate)) tentative = guardW * (1 + infl);
+            // capital-preservation: skip the inflation raise after last year was down if overspending
+            if (!(prevReturn != null && prevReturn < 0 && rate > guardInitRate)) tentative = guardW * (1 + infl);
             if (guardInitRate > 0 && rate > 1.2 * guardInitRate) tentative *= 0.9;      // guardrail cut
             else if (guardInitRate > 0 && rate < 0.8 * guardInitRate) tentative *= 1.1; // prosperity raise
             guardW = tentative;
@@ -408,6 +409,7 @@
         income, spending: spendingNeed, withdrawal, taxes: taxesPaid,
         total: totalAll(bal), return: lastReturn
       });
+      prevReturn = r; // remembered for next year's guardrails decision
     }
 
     return { rows, depletionAge, success, endBalance: rows.length ? rows[rows.length - 1].total : totalAll(bal) };
