@@ -66,6 +66,7 @@ are scoped to one tracker.
 | `POST /trackers/:id/revisions` | Save; `409` on a stale parent, `force: true` to override |
 | `PATCH /trackers/:id` | Rename; creates no revision |
 | `DELETE /trackers/:id` | Soft delete; recoverable for 90 days |
+| `GET /health/retention` | Cleanup liveness; public, no token |
 
 An unknown tracker and a bad token both return the same `401`, so UUID tracker
 ids cannot be used as an existence oracle.
@@ -103,3 +104,22 @@ Enforced on write: every save prunes to the newest 5 revisions in the same
 transaction. The nightly cron (`17 3 * * *`) is only a safety net — inactivity
 expiry, tombstone hard-delete past 90 days, and an orphan sweep that should
 always find zero.
+
+### Monitoring
+
+Poll `GET /health/retention` and alert when `stale` is true. The heartbeat is
+written only after a successful cron sweep, so it detects when the job has
+stopped firing.
+
+```sh
+curl -s https://expense-tracker-api.tomhess.workers.dev/health/retention
+```
+
+### Rate limits
+
+`RL_CREATE` is 10 requests per 60 seconds per client IP on tracker creation;
+`RL_WRITE` is 30 per 60 seconds per tracker id on revision saves. Declared as
+`[[ratelimits]]` at the top level of `wrangler.toml`. Enforcement is
+approximate rather than an exact cutoff — slow sequential traffic can exceed
+the nominal limit while a concentrated burst is throttled, blunting automated
+abuse rather than metering honest users.

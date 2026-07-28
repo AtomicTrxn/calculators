@@ -290,9 +290,10 @@ GET    /trackers/:id/revisions/:revisionId
 POST   /trackers/:id/revisions
 PATCH  /trackers/:id
 DELETE /trackers/:id
+GET    /health/retention
 ```
 
-Every route on a tombstoned or expired tracker returns `410 Gone`. Every route except `POST /trackers` requires `Authorization: Bearer <token>`; a bad token returns `401` and is indistinguishable from a missing tracker to avoid confirming which IDs exist.
+Every route on a tombstoned or expired tracker returns `410 Gone`. Every route except `POST /trackers` and `GET /health/retention` requires `Authorization: Bearer <token>`; a bad token returns `401` and is indistinguishable from a missing tracker to avoid confirming which IDs exist.
 
 ### `POST /trackers`
 
@@ -331,6 +332,29 @@ That last point is what makes recovery trivial: because soft delete never prunes
 
 The confirmation dialog should say the tracker can be restored by the operator, not imply the data is gone forever.
 
+### `GET /health/retention`
+
+Public and unauthenticated liveness check for the cleanup cron. Returns timestamps and summary counts of the last sweep, never tracker data. Response shape:
+
+```json
+{
+  "lastCleanupAt": 1718000000,
+  "ageSeconds": 86400,
+  "stale": false,
+  "lastReport": {
+    "expired": 12,
+    "revisionsPurged": 47,
+    "trackersPurged": 3,
+    "orphansRemoved": 0
+  }
+}
+```
+
+- `lastCleanupAt` and `ageSeconds` are the last successful sweep's timestamp and age in seconds.
+- `stale` is true when the last run is older than two days, alerting an external monitor that the job has stopped firing. A single missed run does not raise an alarm.
+- `lastReport` contains the counts from the last sweep (`expired`, `revisionsPurged`, `trackersPurged`, `orphansRemoved`). If the stored report is corrupted, it degrades to `null` rather than failing the endpoint — the timestamp is what monitoring actually alerts on.
+- The heartbeat is written only after a successful sweep, so it means "the job completed", not "the job started".
+
 ## Abuse Controls
 
 `POST /trackers` is necessarily unauthenticated, so the Worker enforces:
@@ -339,7 +363,7 @@ The confirmation dialog should say the tracker can be restored by the operator, 
 - **Field caps**, server-side: `title` 120 chars, `saved_by` 60 chars.
 - **Escaping**: `title` and `saved_by` are attacker-controlled and rendered on every viewer's page. Render them through the existing `esc()` helper — a shared cloud link must never become a stored-XSS vector.
 - **Payload validation**: run the incoming payload through the same shape check as `validState()` before storing, so the cloud never serves data the page cannot load.
-- **Rate limits** on tracker creation and revision saves, via the Workers rate-limiting binding (`[[unsafe.bindings]]`, `type = "ratelimit"`), keyed by IP for creates and by tracker ID for saves.
+- **Rate limits** on tracker creation and revision saves. `RL_CREATE` is 10 requests per 60 seconds per client IP on `POST /trackers`; `RL_WRITE` is 30 per 60 seconds per tracker id on saves. Declared as a top-level `[[ratelimits]]` array with `simple = { limit, period }` where period is 10 or 60. The earlier unsafe.bindings form (`type = "ratelimit"`) deployed as Unsafe Metadata that never materialized at runtime, leaving the unauthenticated tracker creation endpoint unprotected; measured before the fix, 30 requests against a 10/60s limit produced zero 429s. After the fix, a 25-request parallel burst produced 13 429s. Enforcement is approximate rather than an exact cutoff — slow sequential traffic can exceed the nominal limit while a concentrated burst is throttled, matching Cloudflare's per-colo eventually-consistent counter and blunting automated abuse without metering honest users.
 
 **Dropped during implementation: the per-tracker daily save cap.** It was specified as "cap revisions per tracker per day (e.g. 200)", but that is not implementable by counting revisions — the rolling window caps retained rows at 5, so such a count can never reach 200 and the check would be dead code that always passes. Enforcing it honestly would need a separate counter column and a write on every save, which costs more free-tier row-writes than the abuse it prevents. The `RL_WRITE` rate limiter (keyed by tracker id) covers the runaway-client case instead.
 
@@ -375,15 +399,16 @@ Verify by loading the original share link — it should work unchanged.
 
 ## Nightly Cleanup (secondary)
 
-A daily Cron Trigger. Free-plan cron invocations get 10 ms **CPU** time — D1 query latency is I/O and does not count against it, but each statement must still be bounded, so every sweep uses an indexed predicate and a `LIMIT`, and the job is safe to run repeatedly across days to work through a backlog.
+A daily Cron Trigger on `17 3 * * *` UTC. Free-plan cron invocations get 10 ms **CPU** time — D1 query latency is I/O and does not count against it, but each statement must still be bounded, so every sweep uses an indexed predicate and a `LIMIT`, and the job is safe to run repeatedly across days to work through a backlog.
 
 The rolling window is already enforced on write, so this job never handles routine retention. It exists for:
 
 1. **Inactivity expiry** — trackers with no save in 12 months are soft-deleted (which starts their 90-day recovery window, so expiry is recoverable too, not a one-way door).
 2. **Tombstone hard-delete** — trackers soft-deleted more than 90 days ago. This is the only step that destroys data irreversibly, and it is the deadline the undelete runbook is racing.
 3. **Orphan sweep** — revisions numbered above their tracker's current pointer (the lost-race leftovers), and revisions whose tracker no longer exists.
+4. **Heartbeat write** — after all sweeps complete successfully, a single write to the `ops_meta` key/value table records the timestamp and a summary of counts (expired, revisionsPurged, trackersPurged, orphansRemoved). This heartbeat is read by `GET /health/retention` to detect whether the cron job has stopped firing. A job that stops fires no visible error — tombstones just accumulate silently; the heartbeat makes that failure detectable from outside.
 
-Revisions are always deleted before their tracker, since foreign keys are not enforced and ordering is the only protection against orphans.
+Revisions are always deleted before their tracker, since foreign keys are not enforced and ordering is the only protection against orphans. The `ops_meta` table stores operational metadata with schema `id TEXT PRIMARY KEY, value TEXT`, backed by a migration `migrations/0002_ops_meta.sql`.
 
 ```sql
 -- 1. mark long-inactive trackers as deleted
@@ -452,7 +477,7 @@ Add a `cloudSession` object:
 - All API routes, including the single-batch save path, dedupe, `409` handling, size and field caps, payload shape validation, CORS allowlist, and `410` for tombstones.
 - Scheduled cleanup handler.
 - Retention constants in a single module (`src/constants.ts`).
-- 33 tests passing; `tsc --noEmit` clean.
+- 38 tests passing; `tsc --noEmit` clean.
 
 Deployed to `https://expense-tracker-api.tomhess.workers.dev` against the `expense_trackers_prod` D1 database, cron on `17 3 * * *`.
 
@@ -462,7 +487,9 @@ Verified against the live Worker and real D1, which closes the gap the `node:sql
 
 Client logic lives in `cloud-client.js` (UMD, DOM-free, matching how `retirement-engine.js` is factored) so it can be unit-tested under plain `node`; the page owns only presentation. 33 client tests in `scripts/cloud-client-tests.js`.
 
-One behaviour was added beyond the original list, because implementation exposed the gap: **a failed reconnect must not hide an unsaved draft.** If the service is unreachable on load, falling through to `loadStored()` would display the unrelated local-only tracker while the user's unsaved cloud work sat invisible in `localStorage` — silently, which the draft rules forbid. The page now restores the draft and keeps the session so editing continues offline and `Save` works once the network returns. On a `401`/`410` the tracker is genuinely gone, so the draft is surfaced once and the session cleared. This is the default path today, since the Worker is not deployed.
+One behaviour was added beyond the original list, because implementation exposed the gap: **a failed reconnect must not hide an unsaved draft.** If the service is unreachable on load, falling through to `loadStored()` would display the unrelated local-only tracker while the user's unsaved cloud work sat invisible in `localStorage` — silently, which the draft rules forbid. The page now restores the draft and keeps the session so editing continues offline and `Save` works once the network returns. On a `401`/`410` the tracker is genuinely gone, so the draft is surfaced once and the session cleared.
+
+A **revision picker** in the cloud toolbar lists the retained revisions and loads a chosen one. Loading is not a rollback: the payload becomes a working copy with unsaved changes, and saving it creates a new revision on top, consuming a window slot like any other save.
 
 
 - `#cloud=` parser alongside the existing `#data=` parser.
@@ -500,6 +527,11 @@ The residual gap: the shim is SQLite, not D1, and the suite drives requests sequ
 - cleanup soft-deletes 12-month-inactive trackers, and hard-deletes only tombstones past 90 days
 - **cleanup does not hard-delete a tombstone inside the 90-day window**
 - cleanup's orphan sweep leaves in-flight revisions alone
+- heartbeat reports stale before the job has ever run
+- cleanup records a heartbeat and run summary after a sweep
+- **heartbeat goes stale once two daily runs are missed**
+- `GET /health/retention` needs no token and returns the heartbeat and summary
+- **heartbeat survives a corrupt stored report**, degrading `lastReport` to null rather than failing the endpoint
 
 Tracker page tests:
 
