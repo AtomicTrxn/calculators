@@ -34,15 +34,18 @@ migrations_dir = "migrations"
 
 # Abuse dampening. RL_CREATE is keyed by IP for unauthenticated tracker
 # creation; RL_WRITE is keyed by tracker id for revision saves.
-[[unsafe.bindings]]
+# Declared as [[ratelimits]], NOT [[unsafe.bindings]]. The unsafe form
+# deploys as "Unsafe Metadata" and the binding never materializes at runtime,
+# so env.RL_* is undefined and enforceRateLimit's `if (!limiter) return`
+# silently lets every request through. Verified: 14 requests past a limit of
+# 10 produced zero 429s under the unsafe form.
+[[ratelimits]]
 name = "RL_CREATE"
-type = "ratelimit"
 namespace_id = "1101"
 simple = { limit = 10, period = 60 }
 
-[[unsafe.bindings]]
+[[ratelimits]]
 name = "RL_WRITE"
-type = "ratelimit"
 namespace_id = "1102"
 simple = { limit = 30, period = 60 }
 
@@ -62,14 +65,12 @@ database_name = "expense_trackers_prod"
 database_id = "5e6c202c-59f0-4092-a470-7d1b34240117"
 migrations_dir = "migrations"
 
-[[env.production.unsafe.bindings]]
+[[env.production.ratelimits]]
 name = "RL_CREATE"
-type = "ratelimit"
 namespace_id = "3101"
 simple = { limit = 10, period = 60 }
 
-[[env.production.unsafe.bindings]]
+[[env.production.ratelimits]]
 name = "RL_WRITE"
-type = "ratelimit"
 namespace_id = "3102"
 simple = { limit = 30, period = 60 }
