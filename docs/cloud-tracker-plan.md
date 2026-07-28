@@ -517,5 +517,5 @@ node scripts/retirement-tests.js
 
 ## Remaining Open Items
 
-- Whether the history panel gets a `Restore` action in v1 or only lists metadata.
+- ~~Whether the history panel gets a `Restore` action in v1 or only lists metadata.~~ **Resolved:** a revision picker sits in the cloud toolbar. Selecting a revision loads it as a working copy with unsaved changes; saving then creates a new revision on top. The server is never rewound, so restoring costs a window slot like any other save, exactly as the retention model requires.
 - Whether the delete confirmation should require re-typing the tracker title. Anyone with the link can delete, and while soft delete makes that recoverable, recovery costs an operator round-trip. A typed confirmation is cheap insurance.

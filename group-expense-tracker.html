@@ -104,6 +104,7 @@
     </div>
     <div class="toolbar-row" id="cloudToolbarCloud" style="display:none;">
       <button class="toolbtn" onclick="saveCloudRevision()">Save cloud revision</button>
+      <select class="toolbtn secondary" id="cloudRevisionPicker" aria-label="Load a saved revision" style="width:auto;max-width:min(300px,100%);" onchange="loadSelectedRevision(this)"></select>
       <button class="toolbtn secondary" onclick="toggleHistoryPanel()">History</button>
       <button class="toolbtn secondary" onclick="copyCloudLink()">Copy cloud link</button>
       <button class="toolbtn secondary" onclick="workLocally()">Work locally</button>
@@ -494,6 +495,9 @@ async function connectCloudSession(trackerId, token, knownSavedBy){
     if(draft) CloudClient.clearDraft(localStorage, trackerId);
   }
   persistCloudSession();
+  // Populate the toolbar revision picker on load. refreshCloudHistory handles
+  // its own errors, so a failure here cannot break connecting.
+  await refreshCloudHistory();
   return resp;
 }
 
@@ -567,6 +571,7 @@ async function shareLiveCloudTracker(){
   const savedBy = promptForSavedBy();
   if(!savedBy){ setCsvStatus('Enter a name to create a shared cloud tracker.', true); return; }
   const title = ((window.prompt('Optional tracker name (e.g. "Cabin trip 2026"):', '') || '')).trim();
+  let created = false;
   cloudBusy = true;
   try{
     const resp = await CloudClient.createTracker({payload: compactState(), savedBy, title: title || undefined});
@@ -575,6 +580,7 @@ async function shareLiveCloudTracker(){
     persistCloudSession();
     updateCloudUI();
     await copyCloudLink(true);
+    created = true;
     setCsvStatus('Created a shared cloud tracker and copied the link. Anyone with it can view and edit it.');
   }catch(err){
     setCsvStatus(cloudErrorMessage(err), true);
@@ -582,6 +588,10 @@ async function shareLiveCloudTracker(){
     cloudBusy = false;
     updateCloudUI();
   }
+  // Populates the revision picker with the tracker's first revision. Deferred
+  // past the finally so cloudBusy is clear; the create response carries no
+  // revisionId, so the list has to come from the API.
+  if(created) await refreshCloudHistory();
 }
 
 async function copyCloudLink(silent){
@@ -602,6 +612,7 @@ async function saveCloudRevision(force){
   if(!cloudSession || cloudBusy) return;
   const savedBy = ensureSavedBy();
   if(!savedBy){ setCsvStatus('Enter a name to save a cloud revision.', true); return; }
+  let historyStale = false;
   cloudBusy = true;
   try{
     const resp = await CloudClient.saveRevision({
@@ -620,8 +631,11 @@ async function saveCloudRevision(force){
     cloudMeta = {expiresAt: resp.expiresAt, expiryWarningDays: resp.expiryWarningDays, revisionWindow: resp.revisionWindow};
     persistCloudSession();
     CloudClient.clearDraft(localStorage, cloudSession.trackerId);
-    cloudHistory = null; // stale after a save; refetched next time the panel opens
-    if(cloudHistoryOpen) await refreshCloudHistory();
+    // The window shifted, so the picker and panel are both stale. The refetch
+    // has to wait until cloudBusy clears below, or refreshCloudHistory
+    // early-returns and the picker is left empty.
+    cloudHistory = null;
+    historyStale = true;
     setCsvStatus(resp.deduped ? 'No changes to save — the cloud tracker is already up to date.' : `Saved cloud revision ${resp.revisionNumber}.`);
   }catch(err){
     if(err instanceof CloudClient.CloudApiError && err.status === 409){
@@ -639,6 +653,7 @@ async function saveCloudRevision(force){
     cloudBusy = false;
     updateCloudUI();
   }
+  if(historyStale) await refreshCloudHistory();
 }
 
 async function loadLatestCloud(){
@@ -706,6 +721,90 @@ async function toggleHistoryPanel(){
   cloudHistoryOpen = !cloudHistoryOpen;
   if(cloudHistoryOpen) await refreshCloudHistory();
   else updateCloudUI();
+}
+
+/**
+ * The revision picker in the toolbar. Shares cloudHistory with the history
+ * panel rather than fetching its own copy, so opening the panel and using the
+ * picker cost one listRevisions between them.
+ */
+function renderRevisionPicker(){
+  const el = document.getElementById('cloudRevisionPicker');
+  if(!el) return;
+  if(!cloudSession){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+
+  const revisions = (cloudHistory && cloudHistory.revisions) || [];
+  if(!revisions.length){
+    el.innerHTML = '<option value="">Revisions…</option>';
+    return;
+  }
+  const current = cloudSession.currentRevisionNumber;
+  // savedBy comes from the API and is attacker-controlled, so every field
+  // here goes through esc() even though these are option labels.
+  el.innerHTML = '<option value="">Load a revision…</option>' + revisions.map(r =>
+    `<option value="${esc(r.revisionId)}">Revision ${esc(String(r.revisionNumber))}`
+    + ` · ${esc(fmtCloudDate(r.savedAt))} by ${esc(r.savedBy || 'someone')}`
+    + `${r.revisionNumber === current ? ' (current)' : ''}</option>`
+  ).join('');
+  el.value = '';
+}
+
+/**
+ * Load a chosen revision into the page.
+ *
+ * This is not a rollback. Per the retention model the server is never
+ * rewound: the loaded payload becomes a working copy with unsaved changes,
+ * and saving it creates a new revision on top, consuming a window slot like
+ * any other save.
+ */
+async function loadSelectedRevision(el){
+  const revisionId = el && el.value;
+  if(!revisionId || !cloudSession){ if(el) el.value = ''; return; }
+  if(cloudBusy){ el.value = ''; return; }
+
+  if(cloudSession.hasUnsavedCloudChanges &&
+     !window.confirm('You have unsaved changes. Loading a revision replaces what is on screen.\n\nContinue?')){
+    el.value = '';
+    return;
+  }
+
+  let refreshAfter = false;
+  cloudBusy = true;
+  try{
+    const resp = await CloudClient.getRevision({
+      trackerId: cloudSession.trackerId,
+      token: cloudSession.token,
+      revisionId
+    });
+    if(!applyState(resp.payload)){
+      setCsvStatus('That revision could not be loaded.', true);
+    } else {
+      renderAll();
+      const isCurrent = resp.revisionNumber === cloudSession.currentRevisionNumber;
+      cloudSession.hasUnsavedCloudChanges = !isCurrent;
+      persistCloudSession();
+      setCsvStatus(isCurrent
+        ? `Reloaded revision ${resp.revisionNumber}, the current one.`
+        : `Loaded revision ${resp.revisionNumber}. This is a working copy — saving creates a new revision on top, it does not roll the tracker back.`);
+    }
+  }catch(err){
+    if(err instanceof CloudClient.CloudApiError && err.status === 410){
+      handleCloudGone(err);
+    } else if(err instanceof CloudClient.CloudApiError && err.status === 404){
+      // Pruned out of the window between listing and loading.
+      setCsvStatus(err.message, true);
+      cloudHistory = null;
+      refreshAfter = true;
+    } else {
+      setCsvStatus(cloudErrorMessage(err), true);
+    }
+  }finally{
+    cloudBusy = false;
+    updateCloudUI();
+  }
+  // Outside the finally so cloudBusy is already cleared and the refresh runs.
+  if(refreshAfter) await refreshCloudHistory();
 }
 
 async function refreshCloudHistory(){
@@ -780,6 +879,7 @@ function updateCloudUI(){
   const statusEl = document.getElementById('cloudStatus');
   if(statusEl) statusEl.innerHTML = cloudStatusHtml();
 
+  renderRevisionPicker();
   renderCloudExpiryWarning();
   renderCloudHistoryPanel();
 }
