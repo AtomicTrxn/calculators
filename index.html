@@ -33,6 +33,12 @@
   .section.other .section-head h2{color:var(--muted);font-size:17px;}
   .calc-card.other-card{background:#fff;}
   .calc-card.other-card .calc-icon{border-color:var(--muted);}
+  .impl-label{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;}
+  .section-divider{margin:34px 0;border:none;border-top:1px dashed var(--line);}
+  .section.react-section .section-head{border-bottom-color:var(--frost);}
+  .section.react-section .section-head h2{color:var(--navy);}
+  .badge.react-badge{border-color:var(--frost);color:var(--frost);}
+  .calc-card.react-card .calc-icon{border-color:var(--frost);}
   @media (max-width:640px){
     body{padding:20px 10px 48px;}
     h1{font-size:30px;}
@@ -49,9 +55,9 @@
     <p class="sub">A collection of self-contained calculators for everyday planning and shared decisions.</p>
   </header>
 
-  <section class="section" aria-label="Retirement plan calculators">
+  <section class="section" aria-label="Retirement plan calculators (HTML and JavaScript)">
     <div class="section-head">
-      <h2>Retirement plan calculators</h2>
+      <h2><span class="impl-label">HTML &amp; JavaScript</span>Retirement plan calculators</h2>
       <p>Three steps of one plan — pay off debt, grow the nest egg, make it last. They share a single saved plan and pass numbers to each other.</p>
     </div>
     <main class="grid" aria-label="Retirement plan calculators">
@@ -108,6 +114,29 @@
         <div class="toolstatus" id="planStatus" aria-live="polite"></div>
       </div>
     </section>
+  </section>
+
+  <hr class="section-divider">
+
+  <section class="section react-section" aria-label="Retirement plan calculators (React)">
+    <div class="section-head">
+      <h2><span class="impl-label">React</span>Retirement Planner — React</h2>
+      <p>Same idea, rewritten from scratch as a standalone React app to demonstrate modern React architecture patterns. Runs independently — no shared plan with the calculators above.</p>
+    </div>
+    <div class="grid">
+      <a class="calc-card react-card" href="app/">
+        <div class="calc-icon" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div>
+          <h2>Retirement Planner (React)</h2>
+          <p>The same Monte Carlo retirement projection, rebuilt with Vite, TypeScript, React Hook Form + Zod, a Web Worker for the simulation, and Recharts — with a few extras the original doesn't have, like live what-if sliders and dark mode.</p>
+          <span class="badge react-badge">React</span>
+          <span class="badge">Monte Carlo</span>
+          <span class="badge">Private / on-device</span>
+        </div>
+      </a>
+    </div>
   </section>
 
   <section class="section other" aria-label="Other tools">

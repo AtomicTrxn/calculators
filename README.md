@@ -10,6 +10,27 @@ A collection of self-contained browser calculators.
 
 Open `index.html` to start from the calculator landing page.
 
+## Retirement Planner (React)
+
+`app/` is a standalone React rewrite of the Retirement Planner — same
+underlying financial model, ported and typed rather than redesigned, but a
+different frontend architecture (Vite + TypeScript strict mode, React Hook
+Form + Zod, a Web Worker for the Monte Carlo simulation, Recharts, Tailwind +
+Radix/shadcn). It runs entirely independently of the calculators above: its
+own `package.json`, its own `localStorage` key, no shared plan, no build-step
+dependency on anything at the repo root. See
+[`docs/retirement-react-rewrite-plan.md`](docs/retirement-react-rewrite-plan.md)
+for the full architecture writeup and the reasoning behind each pattern
+choice.
+
+```sh
+cd app
+npm install
+npm run dev      # local dev server
+npm test         # Vitest — engine parity, schema, hooks, reducer, forms
+npm run build    # production build (GitHub Pages, see deploy workflow)
+```
+
 Calculator data can be shared in two ways. Snapshot links store data in the URL hash using a compact browser-readable format, with no server involvement — best for personal backup, one-off sharing, or static handoff. The Group Expense Tracker also supports live cloud tracker links, which store data server-side and are editable by anyone holding the link. Older compressed snapshot links from development builds still load in browsers that support built-in gzip decompression.
 
 ## Checks

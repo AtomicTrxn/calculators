@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — a modern indigo/slate palette (distinct from the legacy
+ * calculators' muted Nord theme in shared.css, on purpose: this app is a
+ * standalone rewrite, not a reskin, per
+ * docs/retirement-react-rewrite-plan.md §5.2/§5.3).
+ *
+ * Token NAMES stay hue-neutral-ish (navy/frost/teal/coral/good/warn) —
+ * mapping to CSS custom properties Tailwind v4's `@theme` block generates
+ * — but the ROLE each plays is what matters: navy = primary text/ink,
+ * frost = brand/interactive, teal = secondary chart accent, coral =
+ * danger, good = success, warn = warning, sand = page background, paper =
+ * card/input surface, line = border, muted = secondary text. Because
+ * every utility (bg-navy, text-muted, ...) reads the custom property via
+ * var(...), dark mode (E5) is just overriding these same properties under
+ * a dark selector — nothing else has to change.
+ */
+@theme {
+  --color-navy: #0f172a; /* ink — primary text */
+  --color-frost: #6366f1; /* brand — buttons, focus rings, primary chart line */
+  --color-teal: #06b6d4; /* secondary accent — fan chart fill */
+  --color-coral: #ef4444; /* danger */
+  --color-good: #10b981; /* success */
+  --color-warn: #f59e0b; /* warning */
+  --color-sand: #f8fafc; /* page background */
+  --color-paper: #ffffff; /* card / input surface, sits a shade lighter than the page */
+  --color-line: #e2e8f0; /* borders */
+  --color-muted: #64748b; /* secondary text */
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: Georgia, 'Iowan Old Style', serif;
+}
+
+/* Dark palette — applied when the OS prefers dark AND the user hasn't
+   explicitly chosen light (`useTheme`'s three-way toggle), or when the
+   user has explicitly chosen dark. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-navy: #f1f5f9;
+    --color-frost: #818cf8;
+    --color-teal: #22d3ee;
+    --color-coral: #f87171;
+    --color-good: #34d399;
+    --color-warn: #fbbf24;
+    --color-sand: #020617;
+    --color-paper: #0f172a;
+    --color-line: #1e293b;
+    --color-muted: #94a3b8;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-navy: #f1f5f9;
+  --color-frost: #818cf8;
+  --color-teal: #22d3ee;
+  --color-coral: #f87171;
+  --color-good: #34d399;
+  --color-warn: #fbbf24;
+  --color-sand: #020617;
+  --color-paper: #0f172a;
+  --color-line: #1e293b;
+  --color-muted: #94a3b8;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-sand);
+  color: var(--color-navy);
+}
+
+/*
+ * Hide native number-input spin buttons everywhere. Several inputs pair a
+ * type="number" field with a unit suffix ($, $/yr, /yr, years) absolutely
+ * positioned at the right edge (NumberField.tsx) — left alone, the
+ * browser's spin buttons render in that same spot and cover the suffix.
+ * Keyboard up/down-arrow stepping on the input still works; only the
+ * clickable spinner graphic is removed.
+ */
+input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/*
+ * Printable reports (PrintSummary.tsx = detailed, PrintOnePageSummary.tsx
+ * = 1-page). Both are always in the DOM, both start `hidden` — which of
+ * the two prints is picked by `document.documentElement`'s
+ * `data-print-mode` attribute, set by Toolbar's two print buttons right
+ * before calling window.print() (a plain DOM attribute write, not React
+ * state, so it takes effect synchronously with no re-render to wait for).
+ * Absent the attribute (e.g. Cmd+P instead of a Toolbar button), the
+ * detailed report is what prints, matching this app's original
+ * print-report behavior before the 1-page summary existed.
+ */
+@media print {
+  @page {
+    margin: 0.6in 0.55in;
+  }
+  html:not([data-print-mode='summary']) .print-detailed {
+    display: block !important;
+  }
+  html[data-print-mode='summary'] .print-onepage {
+    display: block !important;
+  }
+}

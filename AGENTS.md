@@ -6,7 +6,8 @@
 - `shared.css` and `common.js` hold the styles and DOM/formatting helpers common to all pages (color tokens, card/input/table base styles, path/formatter/binding helpers). Pages link shared.css first and load common.js before their own script; page-specific styles and handlers stay in each page.
 - Four apps: Group Expense Tracker (`group-expense-tracker.html`, logic in `tracker-engine.js`, cloud sync in `cloud-client.js`), Retirement Planner (`retirement-calculator.html`, logic in `retirement-engine.js`), FIRE Calculator (`fire-calculator.html`, logic in `fire-engine.js`), and Debt Payoff Calculator (`debt-calculator.html`, logic in `debt-engine.js`) — all following the same pattern.
 - `plan-state.js` is the shared UMD state module (unified schema, versioned migrations, `#state=` share-link compression, cross-page prefill mappings). See `docs/workflow-and-payoff.md`.
-- `worker/` is the only packaged code: a Cloudflare Worker + D1 backend (TypeScript) for the tracker's optional cloud mode. See `worker/README.md` and design docs in `docs/`.
+- `worker/` is a Cloudflare Worker + D1 backend (TypeScript) for the tracker's optional cloud mode. See `worker/README.md` and design docs in `docs/`.
+- `app/` is a standalone Vite + React + TypeScript rewrite of the Retirement Planner (own `package.json`, own `localStorage` key, no shared plan with the pages above, no build-step dependency in either direction). It's a deliberate, scoped exception to "no build step" — see `docs/retirement-react-rewrite-plan.md` for why and the architecture reasoning. Its own conventions (strict TypeScript, Vitest, ESM) are self-contained inside `app/`; nothing here changes because it exists.
 
 ## Checks
 
