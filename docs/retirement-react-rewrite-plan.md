@@ -1,6 +1,10 @@
 # Retirement Planner — React Rewrite: Implementation Plan
 
-Status: **implemented** — all 5 phases built in `app/`, 78 tests passing, deployed via `.github/workflows/deploy-pages.yml` (pending the one-time Pages-source switch to "GitHub Actions" in repo settings). See the end-of-implementation summary in the PR/commit history for what shipped vs. what's a known follow-up.
+Status: **implemented and merged to `main`** — all 5 phases built in `app/`, 98 tests passing, deployed via `.github/workflows/deploy-pages.yml` (pending the one-time Pages-source switch to "GitHub Actions" in repo settings). See the end-of-implementation summary in the PR/commit history for what shipped vs. what's a known follow-up.
+
+Added after the original plan (not in §6's enhancement list; all inside `app/`): indigo/slate theme with full dark mode, an in-app Design Decisions page (`/retirement/decisions`) with a Planner/Decisions switcher, monthly-or-annual income entry, an optional legacy (bequest) goal with a worker-run solver for the earliest retirement age per 10th/median/90th percentile outcome (`engine/legacySolver.ts`), and two printable reports — detailed and 1-page with a milestone timeline (`engine/milestones.ts`). A fresh plan now starts with no income lines.
+
+Last updated: 2026-10-13.
 
 ## Purpose & scope
 

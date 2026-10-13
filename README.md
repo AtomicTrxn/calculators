@@ -16,7 +16,10 @@ Open `index.html` to start from the calculator landing page.
 underlying financial model, ported and typed rather than redesigned, but a
 different frontend architecture (Vite + TypeScript strict mode, React Hook
 Form + Zod, a Web Worker for the Monte Carlo simulation, Recharts, Tailwind +
-Radix/shadcn). It runs entirely independently of the calculators above: its
+Radix/shadcn), plus a few additions the vanilla page doesn't have: dark mode,
+an in-app design-decisions page, an optional legacy-goal solver (earliest
+retirement age that still leaves a target inheritance), and detailed and
+1-page printable reports. It runs entirely independently of the calculators above: its
 own `package.json`, its own `localStorage` key, no shared plan, no build-step
 dependency on anything at the repo root. See
 [`docs/retirement-react-rewrite-plan.md`](docs/retirement-react-rewrite-plan.md)

@@ -1,32 +1,13 @@
-# React + TypeScript + Vite
+# Retirement Planner (React)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Standalone Vite + React + TypeScript rewrite of the repo's vanilla Retirement Planner. Runs independently of the root calculators (own `package.json`, own `localStorage` key).
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+npm install
+npm run dev      # local dev server
+npm test         # Vitest — engine parity, schema, hooks, reducer, forms
+npm run build    # tsc -b + production build (deployed to GitHub Pages under /app/)
+npm run lint     # oxlint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Architecture and the reasoning behind each choice: [`../docs/retirement-react-rewrite-plan.md`](../docs/retirement-react-rewrite-plan.md), and in-app at `/retirement/decisions`.
